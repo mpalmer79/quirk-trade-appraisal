@@ -1,1 +1,12 @@
+# Quirk Trade Appraisal — Netlify config
+
+[build]
+  publish = "."
+
+# If you want SPA-style routing (optional), keep this block.
+# Otherwise delete it.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
