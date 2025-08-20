@@ -1,1 +1,0 @@
-Quirk Trade Appraisal Tool  
