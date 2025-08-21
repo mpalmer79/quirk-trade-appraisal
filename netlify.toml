@@ -10,13 +10,7 @@
   to = "/.netlify/functions/trade-appraisal"
   status = 200
 
-
 [[redirects]]
   from = "/success"
   to = "/success/"
   status = 301
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
