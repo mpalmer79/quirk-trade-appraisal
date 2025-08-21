@@ -54,7 +54,7 @@ form.addEventListener('submit', async (e)=>{ e.preventDefault();
     aboutYou: "Tell us about Yourself",
     nameLabel: "Full Name",
     phoneLabel: "Phone Number",
-    phoneHint: "US format only. Numbers only; we'll format it.",
+    phoneHint: "Enter your 10 digit phone number.",
     emailLabel: "Email Address",
     vehDetails: "Vehicle Details",
     vinLabel: "VIN (required)",
