@@ -6,7 +6,6 @@
     - Model loader for Make+Year
     - Spanish toggle (reads/writes localStorage 'quirk_lang')
     - Logo SVG injection + recolor
-    - Netlify Forms submit (multipart) + redirect to confirmation.html
 */
 
 /* -------------------- Small utilities -------------------- */
@@ -261,63 +260,10 @@ vinInput?.addEventListener(
   }, 600)
 );
 
-/* -------------------- Netlify Forms submit + redirect -------------------- */
-(function wireSubmit(){
-  if (!form) return;
-  const submitBtn = document.getElementById('submitBtn');
-  const toast = document.getElementById('toast'); // Assuming a toast element for errors
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault(); // Prevent default browser submission
-    if (!form.checkValidity()) {
-        return;
-    }
-
-    // Disable button and show a message to prevent multiple submissions
-    const originalButtonText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = 'Submitting...';
-
-    const formData = new FormData(form);
-    
-    // The URL to redirect to on success, from the HTML form's action attribute
-    const successUrl = form.getAttribute('action') || '/success/';
-
-    try {
-      // ==============================================================================
-      // ==> THE FINAL FIX: Always POST to the page the form is on, which is '/'.
-      // ==> Netlify listens for submissions here, not on the success page.
-      // ==============================================================================
-      const response = await fetch('/', { 
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        // Success! Now we redirect the user to the success page.
-        window.location.href = successUrl;
-      } else {
-        // Handle server errors (e.g., if the Netlify function has an issue)
-        throw new Error('Submission failed on the server. Please try again.');
-      }
-    } catch (error) {
-      // Handle network errors or the error thrown above
-      console.error("Submit failed:", error);
-      
-      if (toast) {
-        toast.textContent = "Sorry, there was a problem sending your info. Please try again.";
-        toast.className = 'toast show error';
-        setTimeout(() => { toast.className = 'toast'; }, 5000);
-      } else {
-        alert("Sorry, there was a problem sending your info. Please try again.");
-      }
-      
-      // Re-enable the button so the user can try again
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalButtonText;
-    }
-  });
-})();
+/* NOTE: The JavaScript form submission logic has been removed.
+  The form now submits using the standard browser behavior,
+  which is more reliable with Netlify's form detection.
+*/
 
 /* -------------------- Logo injection & recolor -------------------- */
 (async function injectAndRecolorQuirkLogo(){
