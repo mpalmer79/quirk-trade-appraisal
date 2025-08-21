@@ -10,7 +10,15 @@
 </head>
 <body>
   <!-- IMPORTANT: enctype enables non-JS file uploads -->
-  <form id="tradeForm" method="post" action="/.netlify/functions/trade-appraisal" enctype="multipart/form-data">
+  <form id="tradeForm" method="post"data-netlify="true" netlify-honeypot="company" enctype="multipart/form-data">
+
+    <!-- Netlify Forms requires this hidden form-name input -->
+    <input type="text: name="company" tabindex-"-1" autocomplete="off"
+           style="position;absolute; left:-10000px; opacity:0; height:0; width:0;">
+
+    <!-- Honeypot field (hidden) -->
+    <input type="hidden" name="referrer">
+    <input type="hidden" name="landingPage">
     <div class="header-title">
      <div class="branding">
   <!-- The SVG will be injected here and recolored to match the underline -->
