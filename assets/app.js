@@ -1,7 +1,10 @@
 /* assets/app.js
    Quirk Sight-Unseen Trade Tool — core UI logic (drop-in)
-   Fixes VIN decode + ensures Make “sticks” (case-insensitive), then loads Models for Make+Year.
-   Robust to VPIC casing, missing options, and programmatic changes triggering duplicate loads.
+   - Populates Year & Make
+   - Loads Models based on Make+Year
+   - VIN decode (NHTSA VPIC) prefills Year/Make/Model/Trim
+   - FIX: Case-insensitive Make selection so it “sticks” after VIN decode
+   - LOGO: Inject SVG above title, force letters + underline to same green
 */
 
 /* ------------ Small utilities ------------ */
@@ -233,11 +236,9 @@ async function loadModels() {
 }
 
 makeSel?.addEventListener("change", () => {
-  // When user changes Make, reload models.
   loadModels();
 });
 yearSel?.addEventListener("change", () => {
-  // When user changes Year, reload models.
   loadModels();
 });
 
@@ -284,11 +285,9 @@ async function decodeVin(vinRaw) {
     if (decYear) setYearSelectValue(yearSel, decYear);
 
     // 2) Make (case-insensitive + fallback add)
-    let makeWasSet = false;
-    if (decMake) makeWasSet = setSelectValueCaseInsensitive(makeSel, decMake);
+    if (decMake) setSelectValueCaseInsensitive(makeSel, decMake);
 
     // 3) Load models for Make+Year before setting Model
-    //    We call it regardless if Make/Year changed, to ensure fresh list.
     await loadModels();
 
     // 4) Model
@@ -302,7 +301,6 @@ async function decodeVin(vinRaw) {
     lastDecodedVin = vin;
   } catch (err) {
     if (err.name === "AbortError") return;
-    // Soft failure: leave fields as-is; optionally you could surface a message if you have a status area.
     console.error("VIN decode failed:", err);
   } finally {
     vinAborter = null;
@@ -329,44 +327,37 @@ if (vinInput) {
   );
 }
 
-/* ------------ Optional: Expose for debugging (remove in production) ------------ */
+/* ------------ Optional: Expose for debugging (can remove) ------------ */
 window.__quirk = Object.assign(window.__quirk || {}, {
   decodeVin,
   loadModels,
 });
+
+/* ------------ Logo injection & recolor (centered above title) ------------ */
+/* Places the SVG into #quirkBrand and forces both the letters and underline
+   to the same Quirk green. If your official hex differs, update BRAND_GREEN. */
 (async function injectAndRecolorQuirkLogo(){
   const slot = document.getElementById('quirkBrand');
   if (!slot) return;
+
+  const BRAND_GREEN = '#0b7d2e'; // <-- set to your official brand green
 
   try {
     const res = await fetch('assets/quirk-logo.svg', { cache: 'no-store' });
     if (!res.ok) throw new Error(`Logo HTTP ${res.status}`);
     const svgText = await res.text();
 
-    // Parse the SVG so we can change fills
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgText, 'image/svg+xml');
     const svg = doc.documentElement;
 
-    // Heuristic: find a non-white, non-black fill in the SVG (this should be the underline's green).
-    const allWithFill = Array.from(svg.querySelectorAll('[fill]'));
-    const candidateGreen = allWithFill
-      .map(n => (n.getAttribute('fill') || '').trim().toLowerCase())
-      .find(c => c && c !== 'none' && c !== '#fff' && c !== '#ffffff' && c !== 'white' && c !== '#000' && c !== '#000000' && c !== 'black');
-
-    const brandGreen = candidateGreen || '#0b7d2e'; // fallback if needed
-
-    // Make any white text/paths match the underline’s green
-    allWithFill.forEach(node => {
-      const f = (node.getAttribute('fill') || '').trim().toLowerCase();
-      if (f === '#fff' || f === '#ffffff' || f === 'white') {
-        node.setAttribute('fill', brandGreen);
-      }
+    // Force all fills to brand green (letters + underline)
+    svg.querySelectorAll('[fill]').forEach(node => {
+      node.setAttribute('fill', BRAND_GREEN);
     });
 
-    // Guarantee visible sizing if the SVG lacks intrinsic size
+    // Ensure visible size if SVG lacks intrinsic sizing
     if (!svg.getAttribute('viewBox')) {
-      // If the original SVG forgot a viewBox, at least avoid collapse
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
       if (!svg.getAttribute('width'))  svg.setAttribute('width', 260);
       if (!svg.getAttribute('height')) svg.setAttribute('height', 64);
@@ -377,7 +368,7 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     slot.appendChild(svg);
   } catch (err) {
     console.error('Logo load/recolor failed:', err);
-    // Fallback: show the raw file as an <img> so you’ll at least see something
+    // Fallback: show raw image so something appears
     const img = document.createElement('img');
     img.src = 'assets/quirk-logo.svg';
     img.alt = 'Quirk Auto';
