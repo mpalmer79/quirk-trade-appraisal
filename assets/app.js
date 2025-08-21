@@ -553,33 +553,35 @@ window.__quirk = Object.assign(window.__quirk || {}, {
       setLang(next);
     });
   }
-
-  // Initial render
-  setLang(localStorage.getItem(LANG_KEY) || "en");
-})();
 (function wireSubmit(){
   const form = document.getElementById('tradeForm');
   if (!form) return;
 
-  const notice = document.createElement('div');
-  notice.id = 'submitNotice';
-  notice.style.margin = '10px 0';
-  form.parentNode.insertBefore(notice, form);
-
   form.addEventListener('submit', async (e) => {
+    // Keep native HTML5 validation
+    if (!form.checkValidity()) return;
     e.preventDefault();
-    notice.textContent = 'Sending...';
-    notice.style.color = '#1f2937';
 
     try {
-      // Convert FormData -> JSON
-      const formData = Object.fromEntries(new FormData(form).entries());
+      const fd = new FormData(form);
+      if (!fd.get('form-name')) fd.set('form-name', 'trade-appraisal');
 
-      const res = await fetch('/.netlify/functions/trade-appraisal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      // This posts multipart/form-data to Netlify Forms (captures files)
+      await fetch('/', { method: 'POST', body: fd });
+
+      // Redirect to confirmation page (keeps your current success UX)
+      window.location.href = 'confirmation.html';
+    } catch (err) {
+      alert('Sorry—there was a problem sending your info. Please try again.');
+      console.error('Submit failed:', err);
+    }
+  });
+})();
+
+  // Initial render
+  setLang(localStorage.getItem(LANG_KEY) || "en");
+})();
+
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (res.ok) {
