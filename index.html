@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sight Unseen Trade-In – Quirk Auto (v2.4)</title>
+  <title>Sight Unseen Trade-In – Quirk Auto (v2.5)</title>
   <meta name="robots" content="noindex" />
   <link rel="preconnect" href="https://vpic.nhtsa.dot.gov" />
   <link rel="stylesheet" href="assets/styles.css" />
@@ -11,63 +11,28 @@
 <body>
 
   <!-- 
-    *** NETLIFY FORM DETECTION FIX ***
-    This hidden form is a static copy purely for Netlify's build process.
-    It ensures that Netlify detects the form named "trade-appraisal" and enables submissions for it.
-    It includes ALL possible fields. The user will not see or interact with this.
+    This is now a standard HTML form. 
+    1. The 'netlify' attribute tells Netlify to process it.
+    2. The 'action' attribute tells Netlify where to redirect after a successful submission.
+    The JavaScript submission logic has been removed from app.js to fix the 404 error.
   -->
-  <form name="trade-appraisal" netlify netlify-honeypot="company" hidden aria-hidden="true">
-    <input type="text" name="company" />
-    <input type="text" name="name" />
-    <input type="tel" name="phone" />
-    <input type="email" name="email" />
-    <input type="text" name="vin" />
-    <input type="number" name="mileage" />
-    <select name="year"><option></option></select>
-    <select name="make"><option></option></select>
-    <select name="model"><option></option></select>
-    <input type="text" name="trim" />
-    <input type="text" name="extColor" />
-    <input type="text" name="intColor" />
-    <input type="number" name="keys" />
-    <select name="title"><option></option></select>
-    <input type="number" name="owners" />
-    <select name="accident"><option></option></select>
-    <textarea name="accidentRepair"></textarea>
-    <select name="warnings"><option></option></select>
-    <textarea name="mech"></textarea>
-    <textarea name="cosmetic"></textarea>
-    <textarea name="interior"></textarea>
-    <textarea name="mods"></textarea>
-    <textarea name="smells"></textarea>
-    <textarea name="service"></textarea>
-    <select name="tires"><option></option></select>
-    <select name="brakes"><option></option></select>
-    <textarea name="wear"></textarea>
-    <input type="file" name="photoExterior" />
-    <input type="file" name="photoInterior" />
-    <input type="file" name="photoDash" />
-    <input type="file" name="photoDamage" />
-    <input type="checkbox" name="agree" />
-  </form>
-  <!-- *** END OF FIX *** -->
-
-  <!-- This is the visible form the user interacts with. -->
   <form
   id="tradeForm"
   name="trade-appraisal"
   method="post"
-  netlify-honeypot="company"
+  action="/confirmation/"
+  netlify
+  netlify-honepot="company"
   enctype="multipart/form-data">
 
-  <!-- The data-netlify="true" attribute is intentionally removed from the visible form 
-       to prevent double submissions. The hidden form handles the Netlify integration. -->
-
+  <!-- This hidden field is required for Netlify to correctly identify the form -->
   <input type="hidden" name="form-name" value="trade-appraisal">
 
+  <!-- This is the honeypot field to catch bots -->
   <input type="text" name="company" tabindex="-1" autocomplete="off"
          style="position:absolute; left:-10000px; opacity:0; height:0; width:0;">
 
+  <!-- These hidden fields will be populated by app.js -->
   <input type="hidden" id="referrer"     name="referrer">
   <input type="hidden" id="landingPage" name="landingPage">
   <input type="hidden" id="utmSource"   name="utmSource">
