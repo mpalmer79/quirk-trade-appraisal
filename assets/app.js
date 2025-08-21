@@ -270,10 +270,6 @@ vinInput?.addEventListener(
   form.addEventListener("submit", async (e) => {
     e.preventDefault(); // Prevent default browser submission
     if (!form.checkValidity()) {
-        // If form is invalid, let the browser show native validation messages
-        // You might need to trigger a 'fake' submit button click for some browsers
-        // or manually find and report the first invalid field.
-        // For simplicity, we'll rely on the user having seen the messages before clicking.
         return;
     }
 
@@ -283,18 +279,22 @@ vinInput?.addEventListener(
     submitBtn.innerHTML = 'Submitting...';
 
     const formData = new FormData(form);
+    
+    // ==============================================================================
+    // ==> THE FIX: Use the form's action attribute, but default to "/" if it's missing.
+    // ==> This prevents the submission to "/null".
+    // ==============================================================================
+    const actionUrl = form.getAttribute('action') || '/';
 
     try {
-      const response = await fetch(form.getAttribute('action'), { // Submit to the action URL from the HTML
+      const response = await fetch(actionUrl, { // Submit to the corrected URL
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
         // Success! Redirect to the confirmation page.
-        // The action URL itself should handle the redirect now.
-        // We can manually redirect as a fallback if needed.
-        window.location.href = form.getAttribute('action');
+        window.location.href = actionUrl;
       } else {
         // Handle server errors (e.g., if the Netlify function has an issue)
         throw new Error('Submission failed on the server. Please try again.');
@@ -303,7 +303,6 @@ vinInput?.addEventListener(
       // Handle network errors or the error thrown above
       console.error("Submit failed:", error);
       
-      // Show an error message to the user
       if (toast) {
         toast.textContent = "Sorry, there was a problem sending your info. Please try again.";
         toast.className = 'toast show error';
