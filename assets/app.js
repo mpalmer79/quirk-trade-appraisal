@@ -9,13 +9,14 @@
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-  <form
+
+<form
   id="tradeForm"
   name="trade-appraisal"
   method="post"
   action="/success/"
   data-netlify="true"
-  netlify-honeypot="company"
+  netlify-honepot="company"
   enctype="multipart/form-data">
 
   <input type="hidden" name="form-name" value="trade-appraisal">
