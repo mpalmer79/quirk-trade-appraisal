@@ -378,3 +378,89 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     slot.appendChild(img);
   }
 })();
+/* ------------ i18n: English <-> Spanish toggle ------------ */
+(function i18nInit(){
+  // Minimal dictionary: add keys as you need. Unknown keys fall back to existing text.
+  const dict = {
+    en: {
+      title: "Sight Unseen Trade-In Appraisal Form",
+      welcome: "Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program",
+      instructions: "Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
+      tell_about: "Tell us about Yourself",
+      decode_btn: "Decode VIN & Prefill",
+      clear_btn: "Clear Form",
+      es_toggle: "versión en español",
+      en_toggle: "English version"
+    },
+    es: {
+      title: "Formulario de Tasación de Intercambio sin Inspección",
+      welcome: "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers",
+      instructions: "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia.",
+      tell_about: "Cuéntenos sobre usted",
+      decode_btn: "Decodificar VIN y Autocompletar",
+      clear_btn: "Limpiar Formulario",
+      es_toggle: "versión en español",
+      en_toggle: "Versión en inglés"
+    }
+  };
+
+  const LANG_KEY = "quirk_lang";
+  const by = (sel) => Array.from(document.querySelectorAll(sel));
+  const t = (lang, key, fallback="") => (dict[lang] && dict[lang][key]) || fallback;
+
+  function applyLang(lang){
+    // Text nodes with data-i18n
+    by("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      const current = el.textContent.trim();
+      const next = t(lang, key, current);
+      if (next) el.textContent = next;
+    });
+
+    // Placeholders with data-i18n-ph
+    by("[data-i18n-ph]").forEach(el => {
+      const key = el.getAttribute("data-i18n-ph");
+      const current = el.getAttribute("placeholder") || "";
+      const next = t(lang, key, current);
+      if (next) el.setAttribute("placeholder", next);
+    });
+
+    // Known buttons (if they don’t have data-i18n yet)
+    const decodeBtnEl = document.getElementById("decodeVinBtn");
+    if (decodeBtnEl && !decodeBtnEl.hasAttribute("data-i18n")) {
+      decodeBtnEl.textContent = t(lang, "decode_btn", decodeBtnEl.textContent.trim());
+    }
+    const clearBtnEl = document.getElementById("clearBtn");
+    if (clearBtnEl && !clearBtnEl.hasAttribute("data-i18n")) {
+      clearBtnEl.textContent = t(lang, "clear_btn", clearBtnEl.textContent.trim());
+    }
+
+    // Toggle label
+    const toggle = document.getElementById("langToggle");
+    if (toggle) {
+      toggle.textContent = (lang === "en") ? t("en","es_toggle") : t("es","en_toggle");
+      toggle.setAttribute("aria-pressed", String(lang === "es"));
+    }
+
+    // Store selection
+    try { localStorage.setItem(LANG_KEY, lang); } catch(_) {}
+  }
+
+  // Wire the toggle (ensure it’s not a submit)
+  const toggle = document.getElementById("langToggle");
+  if (toggle) {
+    // Safety: enforce button type
+    if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const current = (localStorage.getItem(LANG_KEY) || "en");
+      const next = current === "en" ? "es" : "en";
+      applyLang(next);
+    });
+  }
+
+  // Initial language (persisted or default English)
+  const initial = (localStorage.getItem(LANG_KEY) || "en");
+  applyLang(initial);
+})();
