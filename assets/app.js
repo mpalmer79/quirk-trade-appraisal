@@ -261,8 +261,8 @@ vinInput?.addEventListener(
 );
 
 /* NOTE: The JavaScript form submission logic has been removed.
-  The form now submits using the standard browser behavior,
-  which is more reliable with Netlify's form detection.
+  The form now submits using the standard browser behavior via the 'action'
+  attribute in index.html. This is more reliable with Netlify's form detection.
 */
 
 /* -------------------- Logo injection & recolor -------------------- */
