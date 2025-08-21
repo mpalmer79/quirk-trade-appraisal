@@ -167,10 +167,9 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
   display:flex;
   justify-content:center;
   align-items:center;
-  background: var(--ink, #0b3d2e); /* dark pill; fallback provided */
+  background: #fff; /* white background */
   padding:10px 14px;
-  border-radius:8px;
-  margin: 8px 0 10px;
+  margin bottom: 12px;
 }
 
 #quirkBrand {
