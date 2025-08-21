@@ -334,3 +334,56 @@ window.__quirk = Object.assign(window.__quirk || {}, {
   decodeVin,
   loadModels,
 });
+(async function injectAndRecolorQuirkLogo(){
+  const slot = document.getElementById('quirkBrand');
+  if (!slot) return;
+
+  try {
+    const res = await fetch('assets/quirk-logo.svg', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Logo HTTP ${res.status}`);
+    const svgText = await res.text();
+
+    // Parse the SVG so we can change fills
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, 'image/svg+xml');
+    const svg = doc.documentElement;
+
+    // Heuristic: find a non-white, non-black fill in the SVG (this should be the underline's green).
+    const allWithFill = Array.from(svg.querySelectorAll('[fill]'));
+    const candidateGreen = allWithFill
+      .map(n => (n.getAttribute('fill') || '').trim().toLowerCase())
+      .find(c => c && c !== 'none' && c !== '#fff' && c !== '#ffffff' && c !== 'white' && c !== '#000' && c !== '#000000' && c !== 'black');
+
+    const brandGreen = candidateGreen || '#0b7d2e'; // fallback if needed
+
+    // Make any white text/paths match the underline’s green
+    allWithFill.forEach(node => {
+      const f = (node.getAttribute('fill') || '').trim().toLowerCase();
+      if (f === '#fff' || f === '#ffffff' || f === 'white') {
+        node.setAttribute('fill', brandGreen);
+      }
+    });
+
+    // Guarantee visible sizing if the SVG lacks intrinsic size
+    if (!svg.getAttribute('viewBox')) {
+      // If the original SVG forgot a viewBox, at least avoid collapse
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      if (!svg.getAttribute('width'))  svg.setAttribute('width', 260);
+      if (!svg.getAttribute('height')) svg.setAttribute('height', 64);
+    }
+
+    // Inject
+    slot.innerHTML = '';
+    slot.appendChild(svg);
+  } catch (err) {
+    console.error('Logo load/recolor failed:', err);
+    // Fallback: show the raw file as an <img> so you’ll at least see something
+    const img = document.createElement('img');
+    img.src = 'assets/quirk-logo.svg';
+    img.alt = 'Quirk Auto';
+    img.style.height = '64px';
+    img.style.width  = 'auto';
+    slot.innerHTML = '';
+    slot.appendChild(img);
+  }
+})();
