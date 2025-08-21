@@ -39,3 +39,20 @@ button[type="submit"]:hover { background:var(--quirk-green-dark); } button[disab
 form *{ box-sizing:border-box; }
 input, select, textarea{ width:100%; max-width:100%; }
 textarea{ resize:vertical; }
+/* === Phone field sizing & alignment overrides === */
+.phone-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phone-wrapper input#phone {
+  width: 15ch;         /* ~15 character spaces */
+  flex: 0 0 15ch;      /* don't grow/shrink; fixed basis */
+}
+
+.phone-wrapper .spanish-btn {
+  white-space: nowrap; /* keep label on one line */
+  margin-left: 0;      /* keep next to input; remove if you added 'auto' earlier */
+}
+
