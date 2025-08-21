@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sight Unseen Trade-In – Quirk Auto (v2.5)</title>
+  <title>Sight Unseen Trade-In – Quirk Auto (v2.6)</title>
   <meta name="robots" content="noindex" />
   <link rel="preconnect" href="https://vpic.nhtsa.dot.gov" />
   <link rel="stylesheet" href="assets/styles.css" />
@@ -13,16 +13,16 @@
   <!-- 
     This is now a standard HTML form. 
     1. The 'netlify' attribute tells Netlify to process it.
-    2. The 'action' attribute tells Netlify where to redirect after a successful submission.
-    The JavaScript submission logic has been removed from app.js to fix the 404 error.
+    2. The 'action="/success/"' attribute tells Netlify to redirect the user 
+       to your success folder after the form is submitted.
   -->
   <form
   id="tradeForm"
   name="trade-appraisal"
   method="post"
-  action="/confirmation/"
+  action="/success/"
   netlify
-  netlify-honepot="company"
+  netlify-honeypot="company"
   enctype="multipart/form-data">
 
   <!-- This hidden field is required for Netlify to correctly identify the form -->
