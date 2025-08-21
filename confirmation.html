@@ -1,15 +1,37 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Submission Received</title>
-  <link rel="stylesheet" href="assets/styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trade Appraisal Confirmation</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <style>
+    .confirmation-message {
+      text-align: center;
+      margin-top: 100px; /* distance from top */
+    }
+    .confirmation-message h1 {
+      color: #065f46; /* same green as your success message */
+      font-weight: bold;
+    }
+    .sub-message {
+      margin-top: 3em; /* about three lines down */
+      font-size: 1.1em;
+      color: #065f46; /* same green */
+    }
+    .sub-message a {
+      color: #065f46; /* link matches green */
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-  <div class="confirmation">
+  <div class="confirmation-message">
     <h1>Thanks! Your info has been submitted. We’ll be in touch soon!</h1>
-    <p>You may now close this page or <a href="index.html">submit another trade-in appraisal</a>.</p>
+    <p class="sub-message">
+      You may now close this page or 
+      <a href="index.html">submit another trade-in appraisal</a>.
+    </p>
   </div>
 </body>
 </html>
