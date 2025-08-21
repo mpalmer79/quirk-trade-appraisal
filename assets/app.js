@@ -280,21 +280,22 @@ vinInput?.addEventListener(
 
     const formData = new FormData(form);
     
-    // ==============================================================================
-    // ==> THE FIX: Use the form's action attribute, but default to "/" if it's missing.
-    // ==> This prevents the submission to "/null".
-    // ==============================================================================
-    const actionUrl = form.getAttribute('action') || '/';
+    // The URL to redirect to on success, from the HTML form's action attribute
+    const successUrl = form.getAttribute('action') || '/success/';
 
     try {
-      const response = await fetch(actionUrl, { // Submit to the corrected URL
+      // ==============================================================================
+      // ==> THE FINAL FIX: Always POST to the page the form is on, which is '/'.
+      // ==> Netlify listens for submissions here, not on the success page.
+      // ==============================================================================
+      const response = await fetch('/', { 
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        // Success! Redirect to the confirmation page.
-        window.location.href = actionUrl;
+        // Success! Now we redirect the user to the success page.
+        window.location.href = successUrl;
       } else {
         // Handle server errors (e.g., if the Netlify function has an issue)
         throw new Error('Submission failed on the server. Please try again.');
