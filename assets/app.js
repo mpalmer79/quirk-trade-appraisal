@@ -557,3 +557,35 @@ window.__quirk = Object.assign(window.__quirk || {}, {
   // Initial render
   setLang(localStorage.getItem(LANG_KEY) || "en");
 })();
+(function wireSubmit(){
+  const form = document.getElementById('tradeForm');
+  if (!form) return;
+
+  const notice = document.createElement('div');
+  notice.id = 'submitNotice';
+  notice.style.margin = '10px 0';
+  form.parentNode.insertBefore(notice, form);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    notice.textContent = 'Sending…';
+    notice.style.color = '#1f2937';
+
+    try {
+      const fd = new FormData(form);
+      const res = await fetch('/.netlify/functions/trade-appraisal', {
+        method: 'POST',
+        body: fd,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      notice.textContent = 'Thanks! Your info was sent. We’ll be in touch shortly.';
+      notice.style.color = '#065f46';
+      form.reset();
+      // (optional) reset selects after VIN auto-fill etc.
+    } catch (err) {
+      console.error(err);
+      notice.textContent = 'Sorry—there was a problem sending your info. Please try again.';
+      notice.style.color = '#b91c1c';
+    }
+  });
+})();
