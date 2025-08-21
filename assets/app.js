@@ -583,7 +583,7 @@ window.__quirk = Object.assign(window.__quirk || {}, {
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (res.ok) {
-  window.location.href = "/thank-you.html";
+  window.location.href = "/confirmation.html";
 }
 
       notice.style.color = '#065f46';
