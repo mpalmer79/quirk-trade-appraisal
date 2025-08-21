@@ -568,20 +568,23 @@ window.__quirk = Object.assign(window.__quirk || {}, {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    notice.textContent = 'Sending…';
+    notice.textContent = 'Sending...';
     notice.style.color = '#1f2937';
 
     try {
-      const fd = new FormData(form);
+      // Convert FormData -> JSON
+      const formData = Object.fromEntries(new FormData(form).entries());
+
       const res = await fetch('/.netlify/functions/trade-appraisal', {
         method: 'POST',
-        body: fd,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
       });
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       notice.textContent = 'Thanks! Your info was sent. We’ll be in touch shortly.';
       notice.style.color = '#065f46';
       form.reset();
-      // (optional) reset selects after VIN auto-fill etc.
     } catch (err) {
       console.error(err);
       notice.textContent = 'Sorry—there was a problem sending your info. Please try again.';
