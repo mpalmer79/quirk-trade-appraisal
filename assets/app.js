@@ -1,12 +1,12 @@
 /* assets/app.js
-   Quirk Sight-Unseen Trade Tool — VIN decode + Netlify Forms submit
-   - Robust VIN decode (NHTSA VPIC) prefills Year/Make/Model/Trim
-   - Case-insensitive Make/Model selection; adds option if missing so selection “sticks”
-   - Year list & common Make bootstrap if HTML left blank
-   - Model loader for Make+Year
-   - Spanish toggle (reads/writes localStorage 'quirk_lang')
-   - Logo SVG injection + recolor
-   - Netlify Forms submit (multipart) + redirect to confirmation.html
+    Quirk Sight-Unseen Trade Tool — VIN decode + Netlify Forms submit
+    - Robust VIN decode (NHTSA VPIC) prefills Year/Make/Model/Trim
+    - Case-insensitive Make/Model selection; adds option if missing so selection “sticks”
+    - Year list & common Make bootstrap if HTML left blank
+    - Model loader for Make+Year
+    - Spanish toggle (reads/writes localStorage 'quirk_lang')
+    - Logo SVG injection + recolor
+    - Netlify Forms submit (multipart) + redirect to confirmation.html
 */
 
 /* -------------------- Small utilities -------------------- */
@@ -264,19 +264,57 @@ vinInput?.addEventListener(
 /* -------------------- Netlify Forms submit + redirect -------------------- */
 (function wireSubmit(){
   if (!form) return;
-  // Ensure the submit button doesn’t get blocked silently by invalid fields
+  const submitBtn = document.getElementById('submitBtn');
+  const toast = document.getElementById('toast'); // Assuming a toast element for errors
+
   form.addEventListener("submit", async (e) => {
-    if (!form.checkValidity()) return; // let browser show native messages
-    e.preventDefault();
+    e.preventDefault(); // Prevent default browser submission
+    if (!form.checkValidity()) {
+        // If form is invalid, let the browser show native validation messages
+        // You might need to trigger a 'fake' submit button click for some browsers
+        // or manually find and report the first invalid field.
+        // For simplicity, we'll rely on the user having seen the messages before clicking.
+        return;
+    }
+
+    // Disable button and show a message to prevent multiple submissions
+    const originalButtonText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Submitting...';
+
+    const formData = new FormData(form);
 
     try {
-      const fd = new FormData(form);
-      if (!fd.get("form-name")) fd.set("form-name", "trade-appraisal");
-      await fetch("/", { method: "POST", body: fd }); // Netlify Forms captures ALL fields + photos
-      window.location.href = "confirmation.html";
-    } catch (err) {
-      console.error("Submit failed:", err);
-      alert("Sorry—there was a problem sending your info. Please try again.");
+      const response = await fetch('/', { // Submit to the same page, Netlify catches it
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        // Success! Redirect to the confirmation page.
+        // The original code had "confirmation.html". If your success page
+        // is at /success/ as per netlify.toml, use that instead.
+        window.location.href = '/success/';
+      } else {
+        // Handle server errors (e.g., if the Netlify function has an issue)
+        throw new Error('Submission failed on the server. Please try again.');
+      }
+    } catch (error) {
+      // Handle network errors or the error thrown above
+      console.error("Submit failed:", error);
+      
+      // Show an error message to the user
+      if (toast) {
+        toast.textContent = "Sorry, there was a problem sending your info. Please try again.";
+        toast.className = 'toast show error';
+        setTimeout(() => { toast.className = 'toast'; }, 5000);
+      } else {
+        alert("Sorry, there was a problem sending your info. Please try again.");
+      }
+      
+      // Re-enable the button so the user can try again
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalButtonText;
     }
   });
 })();
@@ -332,7 +370,7 @@ vinInput?.addEventListener(
     ["Sight Unseen Trade-In Appraisal", "Formulario de Tasación de Intercambio sin Inspección"],
     ["Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program", "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers"],
     ["Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
-     "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia."],
+      "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia."],
     ["Tell us about Yourself", "Cuéntenos sobre usted"],
     ["Vehicle Details", "Detalles del Vehículo"],
     ["Vehicle Condition", "Condición del Vehículo"],
@@ -408,7 +446,7 @@ vinInput?.addEventListener(
 
     // Final section
     ["I confirm the information provided is accurate to the best of my knowledge. I understand that the appraisal value may change if the vehicle's actual condition does not match the details above.",
-     "Confirmo que la información proporcionada es precisa según mi leal saber y entender. Entiendo que el valor de tasación puede cambiar si la condición real del vehículo no coincide con los detalles anteriores."],
+      "Confirmo que la información proporcionada es precisa según mi leal saber y entender. Entiendo que el valor de tasación puede cambiar si la condición real del vehículo no coincide con los detalles anteriores."],
     ["I agree and confirm", "Acepto y confirmo"],
 
     // Generic choices
