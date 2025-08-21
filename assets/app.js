@@ -322,71 +322,187 @@ vinInput?.addEventListener(
   }
 })();
 
-/* -------------------- Minimal i18n toggle (persisted) -------------------- */
-(function i18nInit(){
+/* -------------------- Full-form i18n: English <-> Spanish -------------------- */
+(function i18nFull(){
   const LANG_KEY = "quirk_lang";
-  const dict = {
-    en: {
-      title: "Sight Unseen Trade-In Appraisal",
-      welcome: "Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program",
-      instructions: "Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
-      aboutYou: "Tell us about Yourself",
-      vehDetails: "Vehicle Details",
-      photos: "Photo Uploads (Optional)",
-      finalDisclaimerTitle: "Final Disclaimer",
-      submit: "Get My Trade Appraisal",
-      decodeVinBtn: "Decode VIN & Prefill",
-      clearBtn: "Clear Form",
-      es_toggle: "versión en español",
-      en_toggle: "English version",
-      selectModel: "Select Model"
-    },
-    es: {
-      title: "Formulario de Tasación de Intercambio sin Inspección",
-      welcome: "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers",
-      instructions: "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia.",
-      aboutYou: "Cuéntenos sobre usted",
-      vehDetails: "Detalles del Vehículo",
-      photos: "Cargas de Fotos (Opcional)",
-      finalDisclaimerTitle: "Descargo de Responsabilidad Final",
-      submit: "Obtener mi tasación",
-      decodeVinBtn: "Decodificar VIN y autocompletar",
-      clearBtn: "Limpiar formulario",
-      es_toggle: "versión en español",
-      en_toggle: "Versión en inglés",
-      selectModel: "Seleccione modelo"
-    }
-  };
 
-  function applyLang(lang){
-    document.querySelectorAll("[data-i18n]").forEach(el => {
-      const key = el.getAttribute("data-i18n");
-      const src = (dict[lang] && dict[lang][key]);
-      if (src) {
-        if (el.tagName.toLowerCase() === "input" || el.tagName.toLowerCase() === "textarea") {
-          el.setAttribute("placeholder", src);
-        } else {
-          el.textContent = src;
-        }
-      }
-    });
-    const toggle = document.getElementById("langToggle");
-    if (toggle) {
-      toggle.textContent = (lang === "en") ? dict.en.es_toggle : dict.es.en_toggle;
-      toggle.setAttribute("aria-pressed", String(lang === "es"));
+  // Central dictionary. Keys are EN; values are ES.
+  const MAP_EN_ES = new Map([
+    // Headings / intro
+    ["Sight Unseen Trade-In Appraisal", "Formulario de Tasación de Intercambio sin Inspección"],
+    ["Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program", "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers"],
+    ["Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
+     "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia."],
+    ["Tell us about Yourself", "Cuéntenos sobre usted"],
+    ["Vehicle Details", "Detalles del Vehículo"],
+    ["Vehicle Condition", "Condición del Vehículo"],
+    ["Wearable Items Check", "Revisión de Elementos Desgastables"],
+    ["Photo Uploads (Optional)", "Cargas de Fotos (Opcional)"],
+    ["Final Disclaimer", "Descargo de Responsabilidad Final"],
+
+    // Buttons / actions
+    ["Decode VIN & Prefill", "Decodificar VIN y autocompletar"],
+    ["Clear Form", "Limpiar formulario"],
+    ["Get My Trade Appraisal", "Obtener mi tasación"],
+    ["versión en español", "versión en español"],
+    ["English version", "Versión en inglés"],
+
+    // Customer info
+    ["Full Name", "Nombre completo"],
+    ["Phone Number", "Número de teléfono"],
+    ["Email Address", "Correo electrónico"],
+    ["(###) ###-####", "(###) ###-####"],
+
+    // VIN section
+    ["VIN (required)", "VIN (obligatorio)"],
+    ["VIN auto-capitalizes; letters I, O, Q are invalid.", "El VIN se capitaliza automáticamente; las letras I, O y Q no son válidas."],
+    ["Enter 17 digit VIN", "Ingrese el VIN de 17 caracteres"],
+
+    // Vehicle detail labels
+    ["Current Mileage", "Kilometraje actual"],
+    ["Year", "Año"],
+    ["Make", "Marca"],
+    ["Model", "Modelo"],
+    ["Trim Level (if known)", "Versión (si se conoce)"],
+    ["Select Year", "Seleccione año"],
+    ["Select Make", "Seleccione marca"],
+    ["Select Model", "Seleccione modelo"],
+
+    // Colors / misc vehicle
+    ["Exterior Color", "Color exterior"],
+    ["Interior Color", "Color interior"],
+    ["Number of Keys Included", "Número de llaves incluidas"],
+    ["Title Status", "Estado del título"],
+    ["Clean", "Limpio"],
+    ["Lien", "Gravamen"],
+    ["Rebuilt", "Reconstruido"],
+    ["Salvage", "Pérdida total"],
+    ["Number of Owners (estimate OK)", "Número de dueños (estimación aceptable)"],
+    ["Has the vehicle ever been in an accident?", "¿El vehículo ha tenido algún accidente?"],
+    ["If yes, was it professionally repaired?", "Si la respuesta es sí, ¿fue reparado profesionalmente?"],
+
+    // Condition section
+    ["Any warning lights on dashboard?", "¿Alguna luz de advertencia en el tablero?"],
+    ["Mechanical issues", "Problemas mecánicos"],
+    ["Cosmetic issues", "Problemas cosméticos"],
+    ["Interior clean and damage-free?", "¿Interior limpio y sin daños?"],
+    ["Aftermarket parts or modifications?", "¿Piezas o modificaciones no originales?"],
+    ["Unusual smells?", "¿Olores inusuales?"],
+    ["Routine services up to date?", "¿Servicios de rutina al día?"],
+
+    // Wearables
+    ["Tire Condition", "Estado de los neumáticos"],
+    ["Brake Condition", "Estado de los frenos"],
+    ["Other Wear Items (issues?)", "Otros elementos desgastables (¿problemas?)"],
+    ["New", "Nuevos"],
+    ["Good", "Buenos"],
+    ["Worn", "Gastados"],
+    ["Needs Replacement", "Requieren reemplazo"],
+
+    // Photos
+    ["Exterior Photos", "Fotos del exterior"],
+    ["Interior Photos", "Fotos del interior"],
+    ["Dashboard / Odometer", "Tablero / Odómetro"],
+    ["Damage / Flaws", "Daños / Defectos"],
+    ["Max 10MB per file; 24 files total.", "Máx. 10 MB por archivo; 24 archivos en total."],
+
+    // Final section
+    ["I confirm the information provided is accurate to the best of my knowledge. I understand that the appraisal value may change if the vehicle's actual condition does not match the details above.",
+     "Confirmo que la información proporcionada es precisa según mi leal saber y entender. Entiendo que el valor de tasación puede cambiar si la condición real del vehículo no coincide con los detalles anteriores."],
+    ["I agree and confirm", "Acepto y confirmo"],
+
+    // Generic choices
+    ["Yes", "Sí"],
+    ["No", "No"]
+  ]);
+
+  // Build reverse map for ES->EN
+  const MAP_ES_EN = new Map(Array.from(MAP_EN_ES.entries()).map(([en, es]) => [es, en]));
+
+  function translateText(str, targetLang){
+    if (!str) return str;
+    const norm = str.replace(/\s+/g, " ").trim();
+    if (!norm) return str;
+    if (targetLang === "es") {
+      return MAP_EN_ES.get(norm) || str;
+    } else {
+      return MAP_ES_EN.get(norm) || str;
     }
-    try { localStorage.setItem("quirk_lang", lang); } catch (_){}
   }
 
+  function applyLang(target){
+    const lang = (target === "es") ? "es" : "en";
+
+    // 1) Elements that have data-i18n: prefer key, else current text
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n").trim();
+      const curr = el.textContent.trim();
+      const viaKey = translateText(key, lang);
+      const viaCurr = translateText(curr, lang);
+      const next = (viaKey !== key ? viaKey : viaCurr);
+      if (next && next !== curr) el.textContent = next;
+    });
+
+    // 2) Generic visible text (labels, headings, buttons, spans, table cells, option text)
+    const selectors = [
+      "label","legend","h1","h2","h3","h4",
+      "button","a.btn","span","p","small","strong","em","th","td","option"
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach(el => {
+      if (el.hasAttribute("data-i18n")) return; // already handled
+      // For options and many elements, textContent is appropriate
+      const curr = el.textContent ? el.textContent.trim() : "";
+      if (!curr) return;
+      const next = translateText(curr, lang);
+      if (next && next !== curr) el.textContent = next;
+    });
+
+    // 3) Placeholders
+    document.querySelectorAll("input[placeholder], textarea[placeholder]").forEach(el => {
+      const ph = el.getAttribute("placeholder") || "";
+      const next = translateText(ph, lang);
+      if (next && next !== ph) el.setAttribute("placeholder", next);
+    });
+
+    // 4) aria-label / title attributes
+    document.querySelectorAll("[aria-label]").forEach(el => {
+      const v = el.getAttribute("aria-label");
+      const next = translateText(v, lang);
+      if (next && next !== v) el.setAttribute("aria-label", next);
+    });
+    document.querySelectorAll("[title]").forEach(el => {
+      const v = el.getAttribute("title");
+      const next = translateText(v, lang);
+      if (next && next !== v) el.setAttribute("title", next);
+    });
+
+    // 5) Language toggle button label + pressed state
+    const toggle = document.getElementById("langToggle");
+    if (toggle) {
+      toggle.textContent = (lang === "es") ? "Versión en inglés" : "versión en español";
+      toggle.setAttribute("aria-pressed", String(lang === "es"));
+      if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
+    }
+
+    // 6) Set <html lang> for a11y and persist
+    document.documentElement.setAttribute("lang", lang);
+    try { localStorage.setItem(LANG_KEY, lang); } catch(_) {}
+  }
+
+  // Wire the toggle
   const toggle = document.getElementById("langToggle");
   if (toggle) {
     if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
     toggle.addEventListener("click", (e) => {
       e.preventDefault();
-      const curr = (localStorage.getItem("quirk_lang") || "en");
+      const curr = (localStorage.getItem(LANG_KEY) || "en");
       applyLang(curr === "en" ? "es" : "en");
     });
   }
 
-  applyLang(localStorage.getItem("quirk_lang") || "en");
+  // Initial language: URL override (?lang=es) > saved > default en
+  const params = new URLSearchParams(location.search);
+  const urlLang = params.get("lang");
+  const saved = (localStorage.getItem(LANG_KEY) || "en").toLowerCase();
+  applyLang(urlLang === "es" || urlLang === "en" ? urlLang : saved);
 })();
