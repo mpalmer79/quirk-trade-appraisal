@@ -4,7 +4,8 @@
    - Loads Models based on Make+Year
    - VIN decode (NHTSA VPIC) prefills Year/Make/Model/Trim
    - FIX: Case-insensitive Make selection so it “sticks” after VIN decode
-   - LOGO: Inject SVG above title, force letters + underline to same green
+   - LOGO: Inject SVG above title, force letters + underline to brand green
+   - I18N: Single, full-form EN <-> ES toggle
 */
 
 /* ------------ Small utilities ------------ */
@@ -335,12 +336,12 @@ window.__quirk = Object.assign(window.__quirk || {}, {
 
 /* ------------ Logo injection & recolor (centered above title) ------------ */
 /* Places the SVG into #quirkBrand and forces both the letters and underline
-   to the same Quirk green. If your official hex differs, update BRAND_GREEN. */
+   to the Quirk brand green. */
 (async function injectAndRecolorQuirkLogo(){
   const slot = document.getElementById('quirkBrand');
   if (!slot) return;
 
-  const BRAND_GREEN = '#0b7d2e'; // <-- set to your official brand green
+  const BRAND_GREEN = '#00bf6f'; // official underline green from your SVG
 
   try {
     const res = await fetch('assets/quirk-logo.svg', { cache: 'no-store' });
@@ -363,12 +364,10 @@ window.__quirk = Object.assign(window.__quirk || {}, {
       if (!svg.getAttribute('height')) svg.setAttribute('height', 64);
     }
 
-    // Inject
     slot.innerHTML = '';
     slot.appendChild(svg);
   } catch (err) {
     console.error('Logo load/recolor failed:', err);
-    // Fallback: show raw image so something appears
     const img = document.createElement('img');
     img.src = 'assets/quirk-logo.svg';
     img.alt = 'Quirk Auto';
@@ -378,101 +377,25 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     slot.appendChild(img);
   }
 })();
-/* ------------ i18n: English <-> Spanish toggle ------------ */
+
+/* ------------ i18n: Single FULL-FORM English <-> Spanish toggle ------------ */
+/* DELETE any older i18n blocks; keep ONLY this one. */
 (function i18nInit(){
-  // Minimal dictionary: add keys as you need. Unknown keys fall back to existing text.
-  const dict = {
-    en: {
-      title: "Sight Unseen Trade-In Appraisal Form",
-      welcome: "Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program",
-      instructions: "Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
-      tell_about: "Tell us about Yourself",
-      decode_btn: "Decode VIN & Prefill",
-      clear_btn: "Clear Form",
-      es_toggle: "versión en español",
-      en_toggle: "English version"
-    },
-    es: {
-      title: "Formulario de Tasación de Intercambio sin Inspección",
-      welcome: "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers",
-      instructions: "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia.",
-      tell_about: "Cuéntenos sobre usted",
-      decode_btn: "Decodificar VIN y Autocompletar",
-      clear_btn: "Limpiar Formulario",
-      es_toggle: "versión en español",
-      en_toggle: "Versión en inglés"
-    }
-  };
+  const LANG_KEY   = "quirk_lang";
+  const TOGGLE_ID  = "langToggle";
+  const ROOT       = document.getElementById("tradeForm") || document.body;
 
-  const LANG_KEY = "quirk_lang";
-  const by = (sel) => Array.from(document.querySelectorAll(sel));
-  const t = (lang, key, fallback="") => (dict[lang] && dict[lang][key]) || fallback;
+  // Normalize keys: trim, collapse whitespace, drop trailing/leading ":" and "*"
+  const norm = (s) => String(s || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^\s*[:*]\s*/g, "")
+    .replace(/\s*[:*]\s*$/g, "")
+    .trim();
 
-  function applyLang(lang){
-    // Text nodes with data-i18n
-    by("[data-i18n]").forEach(el => {
-      const key = el.getAttribute("data-i18n");
-      const current = el.textContent.trim();
-      const next = t(lang, key, current);
-      if (next) el.textContent = next;
-    });
-
-    // Placeholders with data-i18n-ph
-    by("[data-i18n-ph]").forEach(el => {
-      const key = el.getAttribute("data-i18n-ph");
-      const current = el.getAttribute("placeholder") || "";
-      const next = t(lang, key, current);
-      if (next) el.setAttribute("placeholder", next);
-    });
-
-    // Known buttons (if they don’t have data-i18n yet)
-    const decodeBtnEl = document.getElementById("decodeVinBtn");
-    if (decodeBtnEl && !decodeBtnEl.hasAttribute("data-i18n")) {
-      decodeBtnEl.textContent = t(lang, "decode_btn", decodeBtnEl.textContent.trim());
-    }
-    const clearBtnEl = document.getElementById("clearBtn");
-    if (clearBtnEl && !clearBtnEl.hasAttribute("data-i18n")) {
-      clearBtnEl.textContent = t(lang, "clear_btn", clearBtnEl.textContent.trim());
-    }
-
-    // Toggle label
-    const toggle = document.getElementById("langToggle");
-    if (toggle) {
-      toggle.textContent = (lang === "en") ? t("en","es_toggle") : t("es","en_toggle");
-      toggle.setAttribute("aria-pressed", String(lang === "es"));
-    }
-
-    // Store selection
-    try { localStorage.setItem(LANG_KEY, lang); } catch(_) {}
-  }
-
-  // Wire the toggle (ensure it’s not a submit)
-  const toggle = document.getElementById("langToggle");
-  if (toggle) {
-    // Safety: enforce button type
-    if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
-    toggle.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const current = (localStorage.getItem(LANG_KEY) || "en");
-      const next = current === "en" ? "es" : "en";
-      applyLang(next);
-    });
-  }
-
-  // Initial language (persisted or default English)
-  const initial = (localStorage.getItem(LANG_KEY) || "en");
-  applyLang(initial);
-})();
-/* ------------ i18n: Full-form English <-> Spanish toggle (drop-in) ------------ */
-(function i18nInit(){
-  const LANG_KEY = "quirk_lang";
-  const TOGGLE_ID = "langToggle";
-
-  // Central dictionary. Keys are EN text; values are ES text.
-  // For EN<-ES we just reverse this map at runtime.
-  const MAP_EN_ES = new Map([
-    // Top-level
+  // English -> Spanish dictionary (keys are normalized EN strings)
+  const D = new Map([
+    // Top
     ["Sight Unseen Trade-In Appraisal Form", "Formulario de Tasación de Intercambio sin Inspección"],
     ["Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program", "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers"],
     ["Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
@@ -481,13 +404,16 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     ["Vehicle Details", "Detalles del Vehículo"],
     ["Photos", "Fotos"],
     ["Upload Photos", "Subir fotos"],
-    ["Submit", "Enviar"],
-    ["Clear Form", "Limpiar formulario"],
-    ["Decode VIN & Prefill", "Decodificar VIN y autocompletar"],
-    ["versión en español", "versión en español"], // button itself; will flip to English version when ES is active
-    ["English version", "Versión en inglés"],
 
-    // Common field labels
+    // Buttons
+    ["Decode VIN & Prefill", "Decodificar VIN y autocompletar"],
+    ["Decode VIN & Prefill", "Decodificar VIN y autocompletar"], // duplicate keeps casing
+    ["Clear Form", "Limpiar formulario"],
+    ["Submit", "Enviar"],
+    ["English version", "Versión en inglés"],
+    ["versión en español", "versión en español"],
+
+    // Person info
     ["Full Name", "Nombre completo"],
     ["Email Address", "Correo electrónico"],
     ["Phone Number", "Número de teléfono"],
@@ -498,9 +424,8 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     ["Preferred Contact Method", "Método de contacto preferido"],
     ["Comments", "Comentarios"],
 
-    // Vehicle section
+    // Vehicle info
     ["VIN (required)", "VIN (obligatorio)"],
-    ["VIN (required) *", "VIN (obligatorio) *"],
     ["VIN", "VIN"],
     ["Current Mileage", "Kilometraje actual"],
     ["Year", "Año"],
@@ -516,16 +441,17 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     ["Has the vehicle been in any accidents?", "¿El vehículo ha tenido accidentes?"],
     ["Does the vehicle have a clean title?", "¿El vehículo tiene título limpio?"],
 
-    // Helpers / smallprint / disclaimers
+    // Helper text / smallprint
     ["Attach clear photos of the exterior, interior, and odometer.", "Adjunte fotos claras del exterior, interior y odómetro."],
     ["By submitting, you agree that the information provided is accurate.", "Al enviar, usted acepta que la información proporcionada es precisa."],
 
-    // Placeholders (will also be picked up via data-i18n-ph if present)
+    // Placeholders
     ["(###) ###-####", "(###) ###-####"],
     ["e.g. 45,000", "p. ej., 45,000"],
     ["Start typing your address", "Empiece a escribir su dirección"],
 
-    // Select / options (Transmission / Drivetrain / Yes-No / etc.)
+    // Select options
+    ["Select Model", "Seleccione modelo"],
     ["Automatic", "Automática"],
     ["Manual", "Manual"],
     ["CVT", "CVT"],
@@ -537,104 +463,97 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     ["Unknown", "Desconocido"],
     ["Yes", "Sí"],
     ["No", "No"],
-    ["Select Model", "Seleccione modelo"]
   ]);
 
-  // Build reverse map for ES->EN
-  const MAP_ES_EN = new Map(Array.from(MAP_EN_ES.entries()).map(([en, es]) => [es, en]));
+  // Build reverse for ES -> EN
+  const D_REV = new Map(Array.from(D.entries()).map(([en, es]) => [norm(es), en]));
 
-  // Utility: translate a string using the map for a target language
-  function translateText(str, targetLang){
-    if (!str) return str;
-    const norm = str.replace(/\s+/g, " ").trim();
-    if (!norm) return str;
-    if (targetLang === "es") {
-      return MAP_EN_ES.get(norm) || str;
-    } else {
-      return MAP_ES_EN.get(norm) || str;
+  function translateString(s, targetLang){
+    const key = norm(s);
+    if (!key) return s;
+    if (targetLang === "es") return D.get(key) || s;
+    return D_REV.get(key) || s;
+  }
+
+  // Translate inner text (preserving trailing "*")
+  function translateTextNode(el, targetLang){
+    const raw = el.textContent;
+    if (!raw) return;
+    const hadStar = /\*/.test(raw);
+    const next = translateString(raw, targetLang);
+    if (next && next !== raw) {
+      el.textContent = hadStar && !/\*/.test(next) ? `${next} *` : next;
     }
   }
 
-  // Walk all nodes that visibly show text we care about
-  function translateAllText(targetLang){
-    // 1) Elements explicitly marked with data-i18n (use the value as key if in dict)
-    document.querySelectorAll("[data-i18n]").forEach(el => {
-      const key = el.getAttribute("data-i18n").trim();
-      const curr = el.textContent.trim();
-      // Try by key first, else by current text
-      const next = translateText(key, targetLang) !== key
-        ? translateText(key, targetLang)
-        : translateText(curr, targetLang);
-      if (next && next !== curr) el.textContent = next;
+  function translateAll(targetLang){
+    const scope = ROOT;
+
+    // 1) Explicit keys (data-i18n)
+    scope.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      const val = translateString(key, targetLang);
+      if (val && val !== key) {
+        const hadStar = /\*/.test(el.textContent || "");
+        el.textContent = hadStar && !/\*/.test(val) ? `${val} *` : val;
+      } else {
+        translateTextNode(el, targetLang);
+      }
     });
 
-    // 2) Generic labels/headings/buttons/spans without data-i18n (match by visible text)
-    const selectors = [
-      "label", "legend", "h1","h2","h3","h4",
-      "button","a.btn","span","p","small","strong","em","th","td","option"
-    ];
-    document.querySelectorAll(selectors.join(",")).forEach(el => {
-      // Skip elements already handled above
-      if (el.hasAttribute("data-i18n")) return;
-      const curr = (el.tagName.toLowerCase() === "option")
-        ? el.textContent
-        : el.textContent;
-      const trimmed = curr && curr.trim();
-      if (!trimmed) return;
-      const next = translateText(trimmed, targetLang);
-      if (next && next !== trimmed) el.textContent = next;
-    });
+    // 2) Common text elements without data-i18n
+    scope.querySelectorAll("label,legend,h1,h2,h3,h4,button,a.btn,span,p,small,strong,em,th,td")
+      .forEach(el => {
+        if (el.hasAttribute("data-i18n")) return;
+        translateTextNode(el, targetLang);
+      });
 
     // 3) Placeholders
-    document.querySelectorAll("input[placeholder], textarea[placeholder]").forEach(el => {
+    scope.querySelectorAll("input[placeholder], textarea[placeholder]").forEach(el => {
       const ph = el.getAttribute("placeholder") || "";
-      const next = translateText(ph, targetLang);
+      const next = translateString(ph, targetLang);
       if (next && next !== ph) el.setAttribute("placeholder", next);
     });
 
-    // 4) aria-label / title (if you used them)
-    document.querySelectorAll("[aria-label]").forEach(el => {
-      const v = el.getAttribute("aria-label");
-      const next = translateText(v, targetLang);
-      if (next && next !== v) el.setAttribute("aria-label", next);
-    });
-    document.querySelectorAll("[title]").forEach(el => {
-      const v = el.getAttribute("title");
-      const next = translateText(v, targetLang);
-      if (next && next !== v) el.setAttribute("title", next);
+    // 4) Options in selects
+    scope.querySelectorAll("select option").forEach(opt => {
+      const txt = opt.textContent || "";
+      const next = translateString(txt, targetLang);
+      if (next && next !== txt) opt.textContent = next;
     });
 
-    // 5) Toggle label
+    // 5) Toggle label text
     const toggle = document.getElementById(TOGGLE_ID);
     if (toggle) {
-      toggle.textContent = (targetLang === "es")
-        ? "Versión en inglés"
-        : "versión en español";
-      toggle.setAttribute("aria-pressed", String(targetLang === "es"));
-      // Enforce type=button for safety (avoid submitting form)
+      toggle.textContent = (targetLang === "es") ? "Versión en inglés" : "versión en español";
       if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
+      toggle.setAttribute("aria-pressed", String(targetLang === "es"));
     }
+
+    // Persist
+    try { localStorage.setItem(LANG_KEY, targetLang); } catch(_) {}
   }
 
   function setLang(lang){
-    const target = (lang === "es") ? "es" : "en";
-    translateAllText(target);
-    try { localStorage.setItem(LANG_KEY, target); } catch(_) {}
+    translateAll(lang === "es" ? "es" : "en");
   }
 
-  // Wire toggle button
+  // Wire the single toggle (ensure not submit)
   const toggle = document.getElementById(TOGGLE_ID);
   if (toggle) {
     if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
-    toggle.addEventListener("click", (e) => {
+    // Remove any previous handlers by replacing the node (in case old code was left in cache)
+    const clone = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(clone, toggle);
+    clone.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       const curr = (localStorage.getItem(LANG_KEY) || "en");
-      const next = (curr === "en") ? "es" : "en";
+      const next = curr === "en" ? "es" : "en";
       setLang(next);
     });
   }
 
-  // Initial language (persisted or default EN)
+  // Initial render
   setLang(localStorage.getItem(LANG_KEY) || "en");
 })();
