@@ -464,3 +464,177 @@ window.__quirk = Object.assign(window.__quirk || {}, {
   const initial = (localStorage.getItem(LANG_KEY) || "en");
   applyLang(initial);
 })();
+/* ------------ i18n: Full-form English <-> Spanish toggle (drop-in) ------------ */
+(function i18nInit(){
+  const LANG_KEY = "quirk_lang";
+  const TOGGLE_ID = "langToggle";
+
+  // Central dictionary. Keys are EN text; values are ES text.
+  // For EN<-ES we just reverse this map at runtime.
+  const MAP_EN_ES = new Map([
+    // Top-level
+    ["Sight Unseen Trade-In Appraisal Form", "Formulario de Tasación de Intercambio sin Inspección"],
+    ["Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program", "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers"],
+    ["Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
+     "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia."],
+    ["Tell us about Yourself", "Cuéntenos sobre usted"],
+    ["Vehicle Details", "Detalles del Vehículo"],
+    ["Photos", "Fotos"],
+    ["Upload Photos", "Subir fotos"],
+    ["Submit", "Enviar"],
+    ["Clear Form", "Limpiar formulario"],
+    ["Decode VIN & Prefill", "Decodificar VIN y autocompletar"],
+    ["versión en español", "versión en español"], // button itself; will flip to English version when ES is active
+    ["English version", "Versión en inglés"],
+
+    // Common field labels
+    ["Full Name", "Nombre completo"],
+    ["Email Address", "Correo electrónico"],
+    ["Phone Number", "Número de teléfono"],
+    ["Street Address", "Dirección"],
+    ["City", "Ciudad"],
+    ["State", "Estado"],
+    ["ZIP Code", "Código postal"],
+    ["Preferred Contact Method", "Método de contacto preferido"],
+    ["Comments", "Comentarios"],
+
+    // Vehicle section
+    ["VIN (required)", "VIN (obligatorio)"],
+    ["VIN (required) *", "VIN (obligatorio) *"],
+    ["VIN", "VIN"],
+    ["Current Mileage", "Kilometraje actual"],
+    ["Year", "Año"],
+    ["Make", "Marca"],
+    ["Model", "Modelo"],
+    ["Trim", "Versión (Trim)"],
+    ["Transmission", "Transmisión"],
+    ["Drivetrain", "Tren de tracción"],
+    ["Exterior Color", "Color exterior"],
+    ["Interior Color", "Color interior"],
+    ["Condition", "Condición"],
+    ["Accident History", "Historial de accidentes"],
+    ["Has the vehicle been in any accidents?", "¿El vehículo ha tenido accidentes?"],
+    ["Does the vehicle have a clean title?", "¿El vehículo tiene título limpio?"],
+
+    // Helpers / smallprint / disclaimers
+    ["Attach clear photos of the exterior, interior, and odometer.", "Adjunte fotos claras del exterior, interior y odómetro."],
+    ["By submitting, you agree that the information provided is accurate.", "Al enviar, usted acepta que la información proporcionada es precisa."],
+
+    // Placeholders (will also be picked up via data-i18n-ph if present)
+    ["(###) ###-####", "(###) ###-####"],
+    ["e.g. 45,000", "p. ej., 45,000"],
+    ["Start typing your address", "Empiece a escribir su dirección"],
+
+    // Select / options (Transmission / Drivetrain / Yes-No / etc.)
+    ["Automatic", "Automática"],
+    ["Manual", "Manual"],
+    ["CVT", "CVT"],
+    ["Dual-Clutch", "Doble embrague"],
+    ["FWD", "Tracción delantera"],
+    ["RWD", "Tracción trasera"],
+    ["AWD", "Tracción total (AWD)"],
+    ["4WD", "4x4 (4WD)"],
+    ["Unknown", "Desconocido"],
+    ["Yes", "Sí"],
+    ["No", "No"],
+    ["Select Model", "Seleccione modelo"]
+  ]);
+
+  // Build reverse map for ES->EN
+  const MAP_ES_EN = new Map(Array.from(MAP_EN_ES.entries()).map(([en, es]) => [es, en]));
+
+  // Utility: translate a string using the map for a target language
+  function translateText(str, targetLang){
+    if (!str) return str;
+    const norm = str.replace(/\s+/g, " ").trim();
+    if (!norm) return str;
+    if (targetLang === "es") {
+      return MAP_EN_ES.get(norm) || str;
+    } else {
+      return MAP_ES_EN.get(norm) || str;
+    }
+  }
+
+  // Walk all nodes that visibly show text we care about
+  function translateAllText(targetLang){
+    // 1) Elements explicitly marked with data-i18n (use the value as key if in dict)
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n").trim();
+      const curr = el.textContent.trim();
+      // Try by key first, else by current text
+      const next = translateText(key, targetLang) !== key
+        ? translateText(key, targetLang)
+        : translateText(curr, targetLang);
+      if (next && next !== curr) el.textContent = next;
+    });
+
+    // 2) Generic labels/headings/buttons/spans without data-i18n (match by visible text)
+    const selectors = [
+      "label", "legend", "h1","h2","h3","h4",
+      "button","a.btn","span","p","small","strong","em","th","td","option"
+    ];
+    document.querySelectorAll(selectors.join(",")).forEach(el => {
+      // Skip elements already handled above
+      if (el.hasAttribute("data-i18n")) return;
+      const curr = (el.tagName.toLowerCase() === "option")
+        ? el.textContent
+        : el.textContent;
+      const trimmed = curr && curr.trim();
+      if (!trimmed) return;
+      const next = translateText(trimmed, targetLang);
+      if (next && next !== trimmed) el.textContent = next;
+    });
+
+    // 3) Placeholders
+    document.querySelectorAll("input[placeholder], textarea[placeholder]").forEach(el => {
+      const ph = el.getAttribute("placeholder") || "";
+      const next = translateText(ph, targetLang);
+      if (next && next !== ph) el.setAttribute("placeholder", next);
+    });
+
+    // 4) aria-label / title (if you used them)
+    document.querySelectorAll("[aria-label]").forEach(el => {
+      const v = el.getAttribute("aria-label");
+      const next = translateText(v, targetLang);
+      if (next && next !== v) el.setAttribute("aria-label", next);
+    });
+    document.querySelectorAll("[title]").forEach(el => {
+      const v = el.getAttribute("title");
+      const next = translateText(v, targetLang);
+      if (next && next !== v) el.setAttribute("title", next);
+    });
+
+    // 5) Toggle label
+    const toggle = document.getElementById(TOGGLE_ID);
+    if (toggle) {
+      toggle.textContent = (targetLang === "es")
+        ? "Versión en inglés"
+        : "versión en español";
+      toggle.setAttribute("aria-pressed", String(targetLang === "es"));
+      // Enforce type=button for safety (avoid submitting form)
+      if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
+    }
+  }
+
+  function setLang(lang){
+    const target = (lang === "es") ? "es" : "en";
+    translateAllText(target);
+    try { localStorage.setItem(LANG_KEY, target); } catch(_) {}
+  }
+
+  // Wire toggle button
+  const toggle = document.getElementById(TOGGLE_ID);
+  if (toggle) {
+    if (!toggle.hasAttribute("type")) toggle.setAttribute("type","button");
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const curr = (localStorage.getItem(LANG_KEY) || "en");
+      const next = (curr === "en") ? "es" : "en";
+      setLang(next);
+    });
+  }
+
+  // Initial language (persisted or default EN)
+  setLang(localStorage.getItem(LANG_KEY) || "en");
+})();
