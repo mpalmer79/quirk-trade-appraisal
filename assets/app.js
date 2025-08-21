@@ -370,7 +370,7 @@ window.__quirk = Object.assign(window.__quirk || {}, {
     console.error('Logo load/recolor failed:', err);
     // Fallback: show raw image so something appears
     const img = document.createElement('img');
-    img.src = 'assets/quirk-logo1.svg';
+    img.src = 'assets/quirk-logo.svg';
     img.alt = 'Quirk Auto';
     img.style.height = '64px';
     img.style.width  = 'auto';
