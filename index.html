@@ -9,21 +9,47 @@
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
+
+  <!-- 
+    *** NETLIFY FORM FIX ***
+    This hidden form is a static copy purely for Netlify's build process.
+    It ensures that Netlify detects the form named "trade-appraisal" and enables submissions for it.
+    The visible form below is the one the user interacts with.
+  -->
+  <form name="trade-appraisal" netlify netlify-honeypot="company" hidden>
+    <input type="text" name="company" />
+    <input type="text" name="name" />
+    <input type="tel" name="phone" />
+    <input type="email" name="email" />
+    <input type="text" name="vin" />
+    <input type="text" name="mileage" />
+    <input type="text" name="year" />
+    <input type="text" name="make" />
+    <input type="text" name="model" />
+    <input type="text" name="trim" />
+    <textarea name="cosmetic"></textarea>
+    <input type="file" name="photoExterior" />
+    <input type="file" name="photoInterior" />
+    <input type="file" name="photoDash" />
+    <input type="file" name="photoDamage" />
+  </form>
+  <!-- *** END OF FIX *** -->
+
   <form
   id="tradeForm"
   name="trade-appraisal"
   method="post"
-  action="/success/"
   data-netlify="true"
   netlify-honeypot="company"
   enctype="multipart/form-data">
 
+  <!-- This action attribute is now only used as a fallback and for the JS redirect -->
   <input type="hidden" name="form-name" value="trade-appraisal">
 
   <input type="text" name="company" tabindex="-1" autocomplete="off"
          style="position:absolute; left:-10000px; opacity:0; height:0; width:0;">
 
-  <input type="hidden" id="referrer"    name="referrer">
+  <input type="hidden" id="referrer"     name="referrer">
   <input type="hidden" id="landingPage" name="landingPage">
   <input type="hidden" id="utmSource"   name="utmSource">
   <input type="hidden" id="utmMedium"   name="utmMedium">
@@ -51,16 +77,6 @@
     </div>
     <button id="langToggle" type="button" class="spanish-btn btn btn-green">versión en español</button>
   </div>
-
-
-    <input type="hidden" id="utmSource"   name="utmSource" />
-    <input type="hidden" id="utmMedium"   name="utmMedium" />
-    <input type="hidden" id="utmCampaign" name="utmCampaign" />
-    <input type="hidden" id="utmTerm"     name="utmTerm" />
-    <input type="hidden" id="utmContent"  name="utmContent" />
-    <input type="hidden" id="referrer"    name="referrer" />
-    <input type="hidden" id="landingPage" name="landingPage" />
-    <input type="hidden" id="phoneRaw"    name="phoneRaw" />
 
     <div class="section">
       <h2 data-i18n="aboutYou">Tell us about Yourself</h2>
@@ -251,3 +267,4 @@
   <script src="assets/app.js"></script>
 </body>
 </html>
+
