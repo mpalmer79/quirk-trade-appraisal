@@ -582,7 +582,10 @@ window.__quirk = Object.assign(window.__quirk || {}, {
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      notice.textContent = 'Thanks! Your info was sent. We’ll be in touch shortly.';
+      if (res.ok) {
+  window.location.href = "/thank-you.html";
+}
+
       notice.style.color = '#065f46';
       form.reset();
     } catch (err) {
