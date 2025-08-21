@@ -163,20 +163,25 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
 .smallprint { text-align:center; font-size:12px; color:#6b6b6b; margin-top:16px; }
 
 /* Branding */
-.branding {
-  display: flex;
-  justify-content: center;
+.branding{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background: var(--ink, #0b3d2e); /* dark pill; fallback provided */
+  padding:10px 14px;
+  border-radius:8px;
   margin: 8px 0 10px;
-  background: var(--ink);   /* dark backing so white lettering shows */
-  padding: 10px 14px;
-  border-radius: 8px;
-  overflow: visible;        /* prevents clipping underline or Q */
 }
 
-.logo {
-  display: block;
-  height: auto;             /* don’t force a crop */
-  max-height: 96px;         /* scales responsibly */
-  width: auto;
+#quirkBrand {
+  width: 260px;   /* adjust as needed */
+  height: 64px;   /* guarantees the SVG is visible */
   line-height: 0;
+}
+#quirkBrand svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 }
