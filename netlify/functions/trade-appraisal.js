@@ -3,17 +3,14 @@ import sg from "@sendgrid/mail";
 sg.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 export async function handler(event) {
-  // CORS / preflight
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "content-type",
   };
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers, body: "ok" };
-  }
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers, body: "Method Not Allowed" };
-  }
+
+  // CORS / method guard
+  if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers, body: "ok" };
+  if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method Not Allowed" };
 
   // Parse JSON body
   let data;
@@ -23,31 +20,28 @@ export async function handler(event) {
     return { statusCode: 400, headers, body: "Invalid JSON" };
   }
 
-  // Honeypot (silent success if robot)
+  // Honeypot (silent success)
   if ((data.company || "").trim()) {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, silent: true }) };
   }
 
-  // Small helpers
+  // Helpers
   const safe = (v) => (typeof v === "string" ? v.trim() : "");
-  const digits = (v) => (safe(v).replace(/\D/g, ""));
+  const digits = (v) => safe(v).replace(/\D/g, "");
 
-  // Build normalized lead
+  // Normalize the core fields we care about
   const lead = {
     name: safe(data.name),
     email: safe(data.email),
-    phone: (digits(data.phoneRaw || data.phone)).slice(0, 15),
-    vin: safe(data.vin).toUpperCase(),
-
+    phone: digits(data.phoneRaw || data.phone).slice(0, 15),
+    vin: safe((data.vin || "").toUpperCase()),
     year: safe(data.year),
     make: safe(data.make),
     model: safe(data.model),
     trim: safe(data.trim),
     mileage: safe(data.mileage),
-
     extColor: safe(data.extColor),
     intColor: safe(data.intColor),
-
     submittedAt: new Date().toISOString(),
     referrer: safe(data.referrer),
     landingPage: safe(data.landingPage),
@@ -58,56 +52,73 @@ export async function handler(event) {
     return { statusCode: 400, headers, body: "Missing required fields" };
   }
 
-  // Build ADF XML for VinSolutions
-  const adfXml = `<?xml version="1.0"?>
-<adf>
-  <prospect status="new">
-    <requestdate>${lead.submittedAt}</requestdate>
-    <vehicle interest="trade-in">
-      ${lead.year ? `<year>${lead.year}</year>` : ``}
-      ${lead.make ? `<make>${lead.make}</make>` : ``}
-      ${lead.model ? `<model>${lead.model}</model>` : ``}
-      ${lead.trim ? `<trim>${lead.trim}</trim>` : ``}
-      <vin>${lead.vin}</vin>
-    </vehicle>
-    <customer>
-      <contact>
-        <name part="full">${lead.name}</name>
-        <phone>+1${lead.phone}</phone>
-        <email>${lead.email}</email>
-      </contact>
-    </customer>
-    <vendor>
-      <contact><name part="full">Quirk Auto</name></contact>
-    </vendor>
-    <provider>
-      <name part="full">Quirk Trade Appraisal</name>
-      <url>https://www.quirkcars.com/</url>
-      <email>no-reply@quirkcars.com</email>
-    </provider>
-    <comments>${lead.referrer ? `Referrer: ${lead.referrer} ` : ``}${lead.landingPage ? `Landing Page: ${lead.landingPage}` : ``}</comments>
-  </prospect>
-</adf>`;
+  // Build a human-readable email containing ALL fields we received.
+  // Start with a preferred display order for key fields, then append any extras.
+  const preferredOrder = [
+    "name","email","phone","vin","year","make","model","trim","mileage",
+    "extColor","intColor","title","keys","owners","accident","accidentRepair",
+    "warnings","mech","cosmetic","interior","mods","smells","service",
+    "tires","brakes","wear","utmSource","utmMedium","utmCampaign","utmTerm","utmContent",
+    "referrer","landingPage","submittedAt"
+  ];
 
-  // For HTML email view
-  const htmlEscape = (s) => String(s).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
-  const subjectLine =
-    `Lead: Sight Unseen Trade — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}`.trim();
+  // Merge lead (normalized) over raw data so we don’t lose normalized values
+  const merged = { ...data, ...lead };
 
-  // Send to VinSolutions + Steve
-  const RECIPIENTS = [
-    process.env.VINSOLUTIONS_TO,
-    "steve@quirkcars.com",
-  ].filter(Boolean);
+  // Build rows: first preferred fields that exist, then any remaining custom fields
+  const included = new Set();
+  const rows = [];
 
+  preferredOrder.forEach((k) => {
+    if (merged[k] !== undefined && merged[k] !== null && String(merged[k]).trim() !== "") {
+      rows.push([k, String(merged[k])]);
+      included.add(k);
+    }
+  });
+
+  Object.keys(merged)
+    .filter((k) => !included.has(k))
+    .sort()
+    .forEach((k) => {
+      const val = merged[k];
+      if (val !== undefined && val !== null && String(val).trim() !== "") {
+        rows.push([k, String(val)]);
+      }
+    });
+
+  const htmlEscape = (s) => String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const htmlTable = `
+    <h2 style="margin:0 0 12px 0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;">New Trade-In Lead</h2>
+    <p style="margin:0 0 16px 0;color:#374151;">
+      ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")} ${lead.trim ? `– ${htmlEscape(lead.trim)}` : ""}
+    </p>
+    <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;font-size:14px;">
+      ${rows.map(([k,v]) => `
+        <tr>
+          <th align="left" style="text-transform:capitalize;vertical-align:top;color:#111827;padding:6px 10px 6px 0;">${htmlEscape(k)}</th>
+          <td style="vertical-align:top;color:#111827;padding:6px 0;">${htmlEscape(v)}</td>
+        </tr>
+      `).join("")}
+    </table>
+    <p style="margin-top:16px;color:#6B7280;font-size:12px;">Submitted at ${htmlEscape(lead.submittedAt)}</p>
+  `;
+
+  const textLines = rows.map(([k,v]) => `${k}: ${v}`).join("\n");
+  const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}`.trim();
+
+  // === Send to Steve only (no VinSolutions) ===
   try {
     await sg.send({
-      to: RECIPIENTS,
-      from: process.env.FROM_EMAIL,              // must be a verified sender/domain in SendGrid
+      to: "steve@quirkcars.com",
+      from: process.env.FROM_EMAIL, // must be a verified sender/domain in SendGrid
       subject: subjectLine,
-      text: adfXml,
-      html: `<pre style="white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace">${htmlEscape(adfXml)}</pre>`,
-      // replyTo: "sales@quirkcars.com",         // optional
+      text: textLines,
+      html: htmlTable,
+      // replyTo: "sales@quirkcars.com", // optional
     });
   } catch (e) {
     return { statusCode: 502, headers, body: "Failed to send lead" };
@@ -126,9 +137,7 @@ export async function handler(event) {
         body: JSON.stringify(lead),
       });
     }
-  } catch (_) {
-    // ignore backup errors
-  }
+  } catch (_) { /* ignore backup errors */ }
 
   return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
 }
