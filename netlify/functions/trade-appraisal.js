@@ -19,15 +19,16 @@ export async function handler(event) {
   };
   if (!lead.name || !lead.email || !lead.phone || !lead.vin) return { statusCode: 400, headers, body: "Missing required fields" };
 
-  const adfXml = `<?xml version="1.0"?>
+  // Build ADF XML (unchanged)
+const adfXml = `<?xml version="1.0"?>
 <adf>
   <prospect status="new">
     <requestdate>${lead.submittedAt}</requestdate>
     <vehicle interest="trade-in">
-      ${lead.year?`<year>${lead.year}</year>`:''}
-      ${lead.make?`<make>${lead.make}</make>`:''}
-      ${lead.model?`<model>${lead.model}</model>`:''}
-      ${lead.trim?`<trim>${lead.trim}</trim>`:''}
+      ${lead.year ? `<year>${lead.year}</year>` : ``}
+      ${lead.make ? `<make>${lead.make}</make>` : ``}
+      ${lead.model ? `<model>${lead.model}</model>` : ``}
+      ${lead.trim ? `<trim>${lead.trim}</trim>` : ``}
       <vin>${lead.vin}</vin>
     </vehicle>
     <customer>
@@ -38,21 +39,53 @@ export async function handler(event) {
       </contact>
     </customer>
     <vendor><contact><name part="full">Quirk Auto</name></contact></vendor>
-    <provider><name part="full">Quirk Trade Appraisal</name><url>https://www.quirkcars.com/</url><email>no-reply@quirkcars.com</email></provider>
-    <comments>${lead.referrer?`Referrer: ${lead.referrer} `:''}${lead.landingPage?`Landing Page: ${lead.landingPage}`:''}</comments>
+    <provider>
+      <name part="full">Quirk Trade Appraisal</name>
+      <url>https://www.quirkcars.com/</url>
+      <email>no-reply@quirkcars.com</email>
+    </provider>
+    <comments>${lead.referrer ? `Referrer: ${lead.referrer} ` : ``}${lead.landingPage ? `Landing Page: ${lead.landingPage}` : ``}</comments>
   </prospect>
 </adf>`;
 
-  try { await sg.send({ to: process.env.VINSOLUTIONS_TO, from: process.env.FROM_EMAIL, subject: `Lead: Sight Unseen Trade — ${lead.name} — ${lead.year} ${lead.make} ${lead.model}`.trim(), text: adfXml, html: `<pre style="white-space:pre-wrap">${adfXml.replace(/[&<>]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[s]))}</pre>` }); }
-  catch (e) { return { statusCode: 502, headers, body: "Failed to send lead" }; }
+// --- helper to safely show XML in the HTML version ---
+const htmlEscape = (s) => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
-  // Optional Google Sheets backup
-  try {
-    if (process.env.SHEETS_WEBHOOK_URL) {
-      const u = process.env.SHEETS_SHARED_SECRET ? `${process.env.SHEETS_WEBHOOK_URL}?secret=${encodeURIComponent(process.env.SHEETS_SHARED_SECRET)}` : process.env.SHEETS_WEBHOOK_URL;
-      await fetch(u, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(lead) });
-    }
-  } catch(e) {}
+// --- build recipients: VIN Solutions + Steve ---
+const RECIPIENTS = [
+  process.env.VINSOLUTIONS_TO,
+  'steve@quirkcars.com'
+].filter(Boolean);
 
-  return { statusCode: 200, headers, body: JSON.stringify({ ok:true }) };
+try {
+  await sg.send({
+    to: RECIPIENTS,                          // send to both
+    from: process.env.FROM_EMAIL,            // must be verified in SendGrid
+    subject: `Lead: Sight Unseen Trade — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(' ')}`.trim(),
+    text: adfXml,                            // plain text ADF
+    html: `<pre style="white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace">${htmlEscape(adfXml)}</pre>`,
+    // Optionally set a reply-to for your sales inbox:
+    // replyTo: 'sales@quirkcars.com',
+  });
+} catch (e) {
+  return { statusCode: 502, headers, body: "Failed to send lead" };
 }
+
+// Optional Google Sheets backup (unchanged)
+try {
+  if (process.env.SHEETS_WEBHOOK_URL) {
+    const u = process.env.SHEETS_SHARED_SECRET
+      ? `${process.env.SHEETS_WEBHOOK_URL}?secret=${encodeURIComponent(process.env.SHEETS_SHARED_SECRET)}`
+      : process.env.SHEETS_WEBHOOK_URL;
+
+    await fetch(u, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lead),
+    });
+  }
+} catch (e) {
+  // swallow backup errors
+}
+
+return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
