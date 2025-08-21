@@ -12,10 +12,13 @@
   <!-- IMPORTANT: enctype enables non-JS file uploads -->
   <form id="tradeForm" method="post" action="/.netlify/functions/trade-appraisal" enctype="multipart/form-data">
     <div class="header-title">
-      <div class="branding">
-        <img src="assets/quirk-logo.svg" alt="Quirk Auto" class="logo">
-      </div>
-      <h1 data-i18n="title">Sight Unseen Trade-In Appraisal Form</h1>
+     <div class="branding">
+  <!-- The SVG will be injected here and recolored to match the underline -->
+  <div id="quirkBrand"></div>
+</div>
+
+<h1 data-i18n="title">Sight Unseen Trade-In Appraisal Form</h1>
+ 
     </div>
     <p class="lead" data-i18n="welcome">Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program</p>
     <p data-i18n="instructions">Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.</p>
