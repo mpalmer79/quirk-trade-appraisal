@@ -305,7 +305,6 @@ vinInput?.addEventListener(
     slot.appendChild(img);
   }
 })();
-<form ... action="/success/" method="POST" data-netlify="true" name="tradeForm">
 
 /* -------------------- Full-form i18n: English <-> Spanish -------------------- */
 (function i18nFull(){
