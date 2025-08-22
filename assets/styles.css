@@ -184,3 +184,22 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
 }
 
 }
+/* Mobile-specific fix */
+@media (max-width: 600px) {
+  .header-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .header-title .branding {
+    order: 2;   /* push logo below the title */
+    margin-top: 12px;
+  }
+
+  .header-title h1 {
+    order: 1;
+    margin-bottom: 8px;
+  }
+}
