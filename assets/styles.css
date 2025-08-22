@@ -184,7 +184,7 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
 }
 
 }
-/* Mobile-specific fix */
+/* Mobile-specific fix: stack title above logo and shrink logo */
 @media (max-width: 600px) {
   .header-title {
     display: flex;
@@ -194,12 +194,19 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
   }
 
   .header-title .branding {
-    order: 2;   /* push logo below the title */
+    order: 2;   /* logo goes below */
     margin-top: 12px;
   }
 
   .header-title h1 {
-    order: 1;
+    order: 1;   /* title goes above */
     margin-bottom: 8px;
+  }
+
+  /* shrink the logo */
+  #quirkBrand svg,
+  #quirkBrand img {
+    max-width: 200px;   /* adjust as needed */
+    height: auto;
   }
 }
