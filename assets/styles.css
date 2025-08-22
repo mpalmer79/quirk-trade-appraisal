@@ -210,3 +210,36 @@ button[disabled] { opacity:.6; cursor:not-allowed; }
     height: auto;
   }
 }
+/* --- MOBILE ONLY: stack title above logo & keep both on the white card --- */
+@media (max-width: 600px) {
+  .header-title {
+    display: flex !important;          /* override any grid/float */
+    flex-direction: column !important; /* stack */
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .header-title .branding {
+    order: 2 !important;               /* logo below title */
+    float: none !important;
+    margin: 12px auto 0 !important;    /* center */
+    width: 100% !important;
+  }
+
+  .header-title h1 {
+    order: 1 !important;               /* title on top */
+    margin: 0 0 8px 0 !important;
+  }
+
+  /* Center the injected SVG wrapper and size it down */
+  #quirkBrand {
+    display: flex !important;
+    justify-content: center !important;
+  }
+  #quirkBrand svg,
+  #quirkBrand img {
+    width: 180px !important;           /* tweak as you like (160–220) */
+    height: auto !important;
+    max-width: 90% !important;
+  }
+}
