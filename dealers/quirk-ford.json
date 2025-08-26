@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-ford",
+  "displayName": "Quirk Ford",
+  "leadTo": "ford-trades@quirkcars.com",
+  "providerName": "Quirk Ford Trade Appraisal",
+  "vendorName": "Quirk Ford",
+  "branding": {
+    "logo": "/assets/quirk-logo-color.svg",
+    "primary": "#0B5FAD"
+  }
+}
