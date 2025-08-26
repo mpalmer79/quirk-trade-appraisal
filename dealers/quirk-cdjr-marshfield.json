@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-cdjr-marshfield",
+  "displayName": "Quirk Chrysler Dodge Jeep Ram Marshfield",
+  "leadTo": "cdjrmarshfield-trades@quirkcars.com",
+  "providerName": "Quirk Chrysler Dodge Jeep Ram Marshfield Trade Appraisal",
+  "vendorName": "Quirk Chrysler Dodge Jeep Ram Marshfield",
+  "branding": {
+    "logo": "/assets/quirk-cdjr-logo.svg",
+    "primary": "#2E2A25"
+  }
+}
