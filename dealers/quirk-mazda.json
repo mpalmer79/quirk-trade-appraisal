@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-mazda",
+  "displayName": "Quirk Mazda",
+  "leadTo": "mazda-trades@quirkcars.com",
+  "providerName": "Quirk Mazda Trade Appraisal",
+  "vendorName": "Quirk Mazda",
+  "branding": {
+    "logo": "/assets/quirk-mazda-logo.svg",
+    "primary": "#101010"
+  }
+}
