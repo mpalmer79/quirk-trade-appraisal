@@ -1,59 +1,55 @@
 // netlify/functions/trade-appraisal.js
 import sg from "@sendgrid/mail";
+import Busboy from "busboy";
+
 sg.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-export async function handler(event) {
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "content-type",
-  };
+/** ---------- helpers ---------- **/
+const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type",
+};
 
-  // CORS / method guard
-  if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers, body: "ok" };
-  if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method Not Allowed" };
+const safe = (v) => (typeof v === "string" ? v.trim() : "");
+const digits = (v) => safe(v).replace(/\D/g, "");
+const htmlEscape = (s) =>
+  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  // Parse JSON body
-  let data;
-  try {
-    data = JSON.parse(event.body || "{}");
-  } catch {
-    return { statusCode: 400, headers, body: "Invalid JSON" };
-  }
+/** Parse multipart/form-data into { fields, files[] } */
+async function parseMultipart(event) {
+  const contentType = event.headers["content-type"] || event.headers["Content-Type"] || "";
+  const busboy = Busboy({ headers: { "content-type": contentType } });
 
-  // Honeypot (silent success)
-  if ((data.company || "").trim()) {
-    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, silent: true }) };
-  }
+  const fields = {};
+  const files = []; // { field, filename, mimetype, buffer }
 
-  // Helpers
-  const safe = (v) => (typeof v === "string" ? v.trim() : "");
-  const digits = (v) => safe(v).replace(/\D/g, "");
+  const body = event.isBase64Encoded
+    ? Buffer.from(event.body || "", "base64")
+    : Buffer.from(event.body || "", "utf8");
 
-  // Normalize the core fields we care about
-  const lead = {
-    name: safe(data.name),
-    email: safe(data.email),
-    phone: digits(data.phoneRaw || data.phone).slice(0, 15),
-    vin: safe((data.vin || "").toUpperCase()),
-    year: safe(data.year),
-    make: safe(data.make),
-    model: safe(data.model),
-    trim: safe(data.trim),
-    mileage: safe(data.mileage),
-    extColor: safe(data.extColor),
-    intColor: safe(data.intColor),
-    submittedAt: new Date().toISOString(),
-    referrer: safe(data.referrer),
-    landingPage: safe(data.landingPage),
-  };
+  return new Promise((resolve, reject) => {
+    busboy.on("field", (name, val) => { fields[name] = val; });
+    busboy.on("file", (name, file, info) => {
+      const { filename, mimeType } = info;
+      const chunks = [];
+      file.on("data", (d) => chunks.push(d));
+      file.on("end", () => {
+        files.push({
+          field: name,
+          filename: filename || "upload",
+          mimetype: mimeType || "application/octet-stream",
+          buffer: Buffer.concat(chunks),
+        });
+      });
+    });
+    busboy.on("error", reject);
+    busboy.on("finish", () => resolve({ fields, files }));
+    busboy.end(body);
+  });
+}
 
-  // Required
-  if (!lead.name || !lead.email || !lead.phone || !lead.vin) {
-    return { statusCode: 400, headers, body: "Missing required fields" };
-  }
-
-  // Build a human-readable email containing ALL fields we received.
-  // Start with a preferred display order for key fields, then append any extras.
+/** Build your nice HTML table + text body from a flat object */
+function buildEmailBodies(lead, rawData) {
   const preferredOrder = [
     "name","email","phone","vin","year","make","model","trim","mileage",
     "extColor","intColor","title","keys","owners","accident","accidentRepair",
@@ -62,16 +58,14 @@ export async function handler(event) {
     "referrer","landingPage","submittedAt"
   ];
 
-  // Merge lead (normalized) over raw data so we don’t lose normalized values
-  const merged = { ...data, ...lead };
-
-  // Build rows: first preferred fields that exist, then any remaining custom fields
+  const merged = { ...rawData, ...lead }; // keep normalized over raw
   const included = new Set();
   const rows = [];
 
   preferredOrder.forEach((k) => {
-    if (merged[k] !== undefined && merged[k] !== null && String(merged[k]).trim() !== "") {
-      rows.push([k, String(merged[k])]);
+    const v = merged[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      rows.push([k, String(v)]);
       included.add(k);
     }
   });
@@ -80,21 +74,16 @@ export async function handler(event) {
     .filter((k) => !included.has(k))
     .sort()
     .forEach((k) => {
-      const val = merged[k];
-      if (val !== undefined && val !== null && String(val).trim() !== "") {
-        rows.push([k, String(val)]);
+      const v = merged[k];
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        rows.push([k, String(v)]);
       }
     });
 
-  const htmlEscape = (s) => String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
   const htmlTable = `
-    <h2 style="margin:0 0 12px 0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;">New Trade-In Lead</h2>
-    <p style="margin:0 0 16px 0;color:#374151;">
-      ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")} ${lead.trim ? `– ${htmlEscape(lead.trim)}` : ""}
+    <h2 style="margin:0 0 12px;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;">New Trade-In Lead</h2>
+    <p style="margin:0 0 16px;color:#374151;">
+      ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}${lead.trim ? ` – ${htmlEscape(lead.trim)}` : ""}
     </p>
     <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;font-size:14px;">
       ${rows.map(([k,v]) => `
@@ -107,24 +96,102 @@ export async function handler(event) {
     <p style="margin-top:16px;color:#6B7280;font-size:12px;">Submitted at ${htmlEscape(lead.submittedAt)}</p>
   `;
 
-  const textLines = rows.map(([k,v]) => `${k}: ${v}`).join("\n");
+  const textLines = rows.map(([k, v]) => `${k}: ${v}`).join("\n");
+  return { htmlTable, textLines };
+}
+
+/** Normalize fields to your schema */
+function normalizeLead(src) {
+  return {
+    name: safe(src.name),
+    email: safe(src.email),
+    phone: digits(src.phoneRaw || src.phone).slice(0, 15),
+    vin: safe((src.vin || "").toUpperCase()),
+    year: safe(src.year),
+    make: safe(src.make),
+    model: safe(src.model),
+    trim: safe(src.trim),
+    mileage: safe(src.mileage),
+    extColor: safe(src.extColor),
+    intColor: safe(src.intColor),
+    referrer: safe(src.referrer),
+    landingPage: safe(src.landingPage),
+    submittedAt: new Date().toISOString(),
+  };
+}
+
+/** Convert files -> SendGrid attachments (cap to 8) */
+function toAttachments(files) {
+  return files.slice(0, 8).map((f) => ({
+    content: f.buffer.toString("base64"),
+    filename: f.filename,
+    type: f.mimetype,
+    disposition: "attachment",
+  }));
+}
+
+/** ---------- handler ---------- **/
+export async function handler(event) {
+  // CORS / method guard
+  if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers, body: "ok" };
+  if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method Not Allowed" };
+
+  const ct = event.headers["content-type"] || event.headers["Content-Type"] || "";
+  const isMultipart = ct.startsWith("multipart/form-data");
+
+  let rawData = {};
+  let uploads = [];
+
+  try {
+    if (isMultipart) {
+      // Parse multipart form-data (photos included)
+      const { fields, files } = await parseMultipart(event);
+      rawData = fields;
+      uploads = files;
+    } else {
+      // Fallback: JSON body (keeps your current behavior for JSON posts)
+      rawData = JSON.parse(event.body || "{}");
+    }
+  } catch {
+    return { statusCode: 400, headers, body: "Invalid request body" };
+  }
+
+  // Honeypot (silent success)
+  if ((safe(rawData.company) || "").trim()) {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, silent: true }) };
+  }
+
+  // Normalize + required fields
+  const lead = normalizeLead(rawData);
+  if (!lead.name || !lead.email || !lead.phone || !lead.vin) {
+    return { statusCode: 400, headers, body: "Missing required fields" };
+  }
+
+  // Build email bodies
+  const { htmlTable, textLines } = buildEmailBodies(lead, rawData);
+
+  // Prepare attachments if any files were uploaded
+  const attachments = uploads.length ? toAttachments(uploads) : undefined;
+
+  // Subject (keep your style)
   const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}`.trim();
 
-  // === Send to Steve only (no VinSolutions) ===
+  // Send via SendGrid (to Steve)
   try {
     await sg.send({
       to: "steve@quirkcars.com",
-      from: process.env.FROM_EMAIL, // must be a verified sender/domain in SendGrid
+      from: process.env.FROM_EMAIL, // must be verified in SendGrid
       subject: subjectLine,
       text: textLines,
       html: htmlTable,
+      attachments, // <— photos ride along if present
       // replyTo: "sales@quirkcars.com", // optional
     });
   } catch (e) {
     return { statusCode: 502, headers, body: "Failed to send lead" };
   }
 
-  // Optional Google Sheets backup (unchanged)
+  // Optional Google Sheets backup (unchanged in spirit)
   try {
     if (process.env.SHEETS_WEBHOOK_URL) {
       const u = process.env.SHEETS_SHARED_SECRET
@@ -137,7 +204,9 @@ export async function handler(event) {
         body: JSON.stringify(lead),
       });
     }
-  } catch (_) { /* ignore backup errors */ }
+  } catch {
+    // ignore backup errors
+  }
 
   return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
 }
