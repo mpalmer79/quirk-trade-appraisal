@@ -98,7 +98,7 @@ const decodeBtn = document.getElementById("decodeVinBtn") || $('[data-i18n="deco
 
 const modelStatus = document.getElementById("modelStatus") || document.getElementById("model-status");
 
-const form = document.getElementById("tradeForm");
+const form = document.getElementById('tradeForm');
 
 /* -------------------- Bootstrap years & makes if empty -------------------- */
 (function initYearsIfEmpty() {
@@ -156,7 +156,7 @@ async function loadModels() {
   modelsAborter = new AbortController();
 
   try {
-    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/getmodelsformakeyear/make/${encodeURIComponent(make)}/modelyear/${encodeURIComponent(year)}?format=json`;
+    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/getmodelsakeyear/make/${encodeURIComponent(make)}/modelyear/${encodeURIComponent(year)}?at=json`;
 
     const res = await fetchWithTimeout(url, { timeout: 15000, signal: modelsAborter.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -212,7 +212,7 @@ async function decodeVin(vinRaw) {
   vinAborter = new AbortController();
 
   try {
-    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvaluesextended/${encodeURIComponent(vin)}?format=json`;
+    const url = `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvaluesextended/${encodeURIComponent(vin)}?at=json`;
     const res = await fetchWithTimeout(url, { timeout: 15000, signal: vinAborter.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -261,9 +261,9 @@ vinInput?.addEventListener(
   }, 600)
 );
 
-/* NOTE: The JavaScript form submission logic has been removed.
-  The form now submits using the standard browser behavior via the 'action'
-  attribute in index.html. This is more reliable with Netlify's form detection.
+/* NOTE: The JavaScript  submission logic has been removed.
+  The  now submits using the standard browser behavior via the 'action'
+  attribute in index.html. This is more reliable with Netlify's  detection.
 */
 
 /* -------------------- Logo injection & recolor -------------------- */
@@ -307,17 +307,17 @@ vinInput?.addEventListener(
   }
 })();
 
-/* -------------------- Full-form i18n: English <-> Spanish -------------------- */
+/* -------------------- Full- i18n: English <-> Spanish -------------------- */
 (function i18nFull(){
   const LANG_KEY = "quirk_lang";
 
   // Central dictionary. Keys are EN; values are ES.
   const MAP_EN_ES = new Map([
     // Headings / intro
-    ["Sight Unseen Trade-In Appraisal", "Formulario de Tasación de Intercambio sin Inspección"],
+    ["Sight Unseen Trade-In Appraisal", "ulario de Tasación de Intercambio sin Inspección"],
     ["Welcome to the Quirk Auto Dealers Sight Unseen Appraisal Program", "Bienvenido al Programa de Tasación sin Inspección de Quirk Auto Dealers"],
-    ["Please fill out this form with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
-      "Complete este formulario con información precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia."],
+    ["Please fill out this  with accurate and complete details about your vehicle. The trade-in value we provide will be honored as long as the vehicle condition matches your answers. We'll verify everything when you bring the vehicle in. If the condition differs, the offer will be adjusted accordingly.",
+      "Complete este ulario con inación precisa y completa sobre su vehículo. El valor de intercambio que proporcionamos se respetará siempre que la condición del vehículo coincida con sus respuestas. Verificaremos todo cuando traiga el vehículo. Si la condición difiere, la oferta se ajustará en consecuencia."],
     ["Tell us about Yourself", "Cuéntenos sobre usted"],
     ["Vehicle Details", "Detalles del Vehículo"],
     ["Vehicle Condition", "Condición del Vehículo"],
@@ -327,7 +327,7 @@ vinInput?.addEventListener(
 
     // Buttons / actions
     ["Decode VIN & Prefill", "Decodificar VIN y autocompletar"],
-    ["Clear Form", "Limpiar formulario"],
+    ["Clear ", "Limpiar formulario"],
     ["Get My Trade Appraisal", "Obtener mi tasación"],
     ["versión en español", "versión en español"],
     ["English version", "Versión en inglés"],
