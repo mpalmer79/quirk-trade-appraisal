@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-works-subaru",
+  "displayName": "Quirk Works Subaru",
+  "leadTo": "subaru-trades@quirkcars.com",
+  "providerName": "Quirk Works Subaru Trade Appraisal",
+  "vendorName": "Quirk Works Subaru",
+  "branding": {
+    "logo": "/assets/quirk-subaru-logo.svg",
+    "primary": "#002C71"
+  }
+}
