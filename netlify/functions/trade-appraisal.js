@@ -176,7 +176,7 @@ export async function handler(event) {
   // Build email
   const { html, text } = buildEmailBodies(lead, rawData);
   const attachments = uploads.length ? toAttachments(uploads) : undefined;
-  const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")} — (photos: ${uploads.length})`.trim();
+  const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}.trim();
 
 // Send email
 try {
