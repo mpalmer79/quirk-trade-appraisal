@@ -33,18 +33,18 @@ async function fetchWithTimeout(resource, options = {}) {
 
 function validVin(v) {
   if (!v) return false;
-  const s = String(v).trim().toUpperCase();
+   s = String(v).trim().toUpperCase();
   return /^[A-HJ-NPR-Z0-9]{17}$/.test(s);
 }
 
 /** Adds/sets select value case-insensitively; creates option if missing */
 function setSelectValueCaseInsensitive(selectEl, value) {
   if (!selectEl || value == null) return false;
-  const target = String(value).trim();
+   target = String(value).trim();
   if (!target) return false;
 
-  const lower = target.toLowerCase();
-  const opts = Array.from(selectEl.options || []);
+   lower = target.toLowerCase();
+   opts = Array.from(selectEl.options || []);
   let opt = opts.find(
     (o) =>
       String(o.value).toLowerCase() === lower ||
@@ -63,7 +63,7 @@ function setSelectValueCaseInsensitive(selectEl, value) {
 /** Ensures numeric year exists in the list; inserts in descending order if needed */
 function setYearSelectValue(selectEl, year) {
   if (!selectEl || !year) return false;
-  const y = String(year).trim();
+   y = String(year).trim();
   if (!y) return false;
 
   let opt = Array.from(selectEl.options || []).find((o) => String(o.value) === y);
@@ -71,10 +71,10 @@ function setYearSelectValue(selectEl, year) {
     opt = document.createElement("option");
     opt.value = y;
     opt.textContent = y;
-    const asNum = Number(y);
+     asNum = Number(y);
     let inserted = false;
     for (let i = 0; i < selectEl.options.length; i++) {
-      const n = Number(selectEl.options[i].value);
+       n = Number(selectEl.options[i].value);
       if (!Number.isNaN(n) && asNum > n) {
         selectEl.insertBefore(opt, selectEl.options[i]);
         inserted = true;
@@ -88,17 +88,17 @@ function setYearSelectValue(selectEl, year) {
 }
 
 /* -------------------- DOM refs -------------------- */
-const yearSel  = document.getElementById("year")  || $('[name="year"]');
-const makeSel  = document.getElementById("make")  || $('[name="make"]');
-const modelSel = document.getElementById("model") || $('[name="model"]');
-const trimInput = document.getElementById("trim") || $('[name="trim"]');
+ yearSel  = document.getElementById("year")  || $('[name="year"]');
+ makeSel  = document.getElementById("make")  || $('[name="make"]');
+ modelSel = document.getElementById("model") || $('[name="model"]');
+ trimInput = document.getElementById("trim") || $('[name="trim"]');
 
-const vinInput  = document.getElementById("vin")  || $('[name="vin"]');
-const decodeBtn = document.getElementById("decodeVinBtn") || $('[data-i18n="decodeVinBtn"]');
+ vinInput  = document.getElementById("vin")  || $('[name="vin"]');
+ decodeBtn = document.getElementById("decodeVinBtn") || $('[data-i18n="decodeVinBtn"]');
 
-const modelStatus = document.getElementById("modelStatus") || document.getElementById("model-status");
+ modelStatus = document.getElementById("modelStatus") || document.getElementById("model-status");
 
-const form = document.getElementById('tradeForm');
+ form = document.getElementById('tradeForm');
 
 /* -------------------- Bootstrap years & makes if empty -------------------- */
 (function initYearsIfEmpty() {
@@ -490,4 +490,147 @@ vinInput?.addEventListener(
   const urlLang = params.get("lang");
   const saved = (localStorage.getItem(LANG_KEY) || "en").toLowerCase();
   applyLang(urlLang === "es" || urlLang === "en" ? urlLang : saved);
+})();
+
+/* ===== VIN Decoder (drop-in) ===== */
+(function(){
+  // --- small helpers ---
+  const $id = (id, name) =>
+    document.getElementById(id) || (name ? document.querySelector(`[name="${name}"]`) : null);
+  const validVin = (v) => /^[A-HJ-NPR-Z0-9]{17}$/i.test(String(v||'').trim());
+  const debounce = (fn, wait=500) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
+
+  // --- dom refs (use id or name fallback) ---
+  const vinInput  = $id('vin','vin');
+  const yearSel   = $id('year','year');
+  const makeSel   = $id('make','make');
+  const modelSel  = $id('model','model');
+  const trimInput = $id('trim','trim');
+  const decodeBtn = document.getElementById('decodeVinBtn');
+
+  if (!vinInput || !yearSel || !makeSel || !modelSel) {
+    // Required fields not present; bail quietly
+    return;
+  }
+
+  // keep model list tidy while loading
+  const modelStatus = document.getElementById('modelStatus') || document.getElementById('model-status');
+  function resetModels(disable=true){
+    if (!modelSel) return;
+    modelSel.innerHTML = '<option value="">Select Model</option>';
+    modelSel.disabled = disable;
+    if (modelStatus) modelStatus.textContent = '';
+  }
+
+  // case-insensitive setter; creates option if missing
+  function setSelectValueCaseInsensitive(selectEl, value){
+    if (!selectEl || !value) return;
+    const target = String(value).trim();
+    const lower  = target.toLowerCase();
+    let opt = Array.from(selectEl.options||[]).find(
+      o => o.value.toLowerCase() === lower || o.textContent.toLowerCase() === lower
+    );
+    if (!opt) {
+      opt = document.createElement('option');
+      opt.value = target; opt.textContent = target;
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = opt.value;
+  }
+
+  // ensure year exists (descending list friendly)
+  function setYear(selectEl, year){
+    if (!selectEl || !year) return;
+    const y = String(year).trim();
+    let opt = Array.from(selectEl.options||[]).find(o => String(o.value) === y);
+    if (!opt) {
+      opt = document.createElement('option'); opt.value = y; opt.textContent = y;
+      // insert near correct spot if numbers
+      const asNum = Number(y);
+      let inserted = false;
+      for (let i=0;i<selectEl.options.length;i++){
+        const n = Number(selectEl.options[i].value);
+        if (!Number.isNaN(n) && asNum > n){ selectEl.insertBefore(opt, selectEl.options[i]); inserted = true; break; }
+      }
+      if (!inserted) selectEl.appendChild(opt);
+    }
+    selectEl.value = y;
+  }
+
+  let modelsAborter = null;
+  async function loadModelsFor(make, year){
+    resetModels(true);
+    if (!make || !year) return;
+    if (modelStatus) modelStatus.textContent = 'Loading models…';
+    if (modelsAborter) modelsAborter.abort();
+    modelsAborter = new AbortController();
+    try{
+      const url = `https://vpic.nhtsa.dot.gov/api/vehicles/getmodelsformakeyear/makeyear/${encodeURIComponent(make)}/modelyear/${encodeURIComponent(year)}?format=json`;
+      const res = await fetch(url, { signal: modelsAborter.signal });
+      const data = await res.json();
+      const list = (data.Results||[])
+        .map(r => r.Model_Name || r.Model || '')
+        .filter(Boolean)
+        .sort((a,b)=>a.localeCompare(b, undefined, { sensitivity:'base' }));
+      if (!list.length){
+        if (modelStatus) modelStatus.textContent = 'No models found. You can type Trim.';
+        resetModels(true); return;
+      }
+      list.forEach(m=>{
+        const o=document.createElement('option'); o.value=m; o.textContent=m; modelSel.appendChild(o);
+      });
+      modelSel.disabled = false;
+      if (modelStatus) modelStatus.textContent = `${list.length} models found.`;
+    } catch {
+      resetModels(true);
+      if (modelStatus) modelStatus.textContent = 'Could not load models.';
+    } finally { modelsAborter = null; }
+  }
+
+  let vinAborter = null;
+  let lastDecoded = '';
+  async function decodeVinNow(vinRaw){
+    const vin = String(vinRaw||'').trim().toUpperCase();
+    if (!validVin(vin)) { lastDecoded=''; return; }
+    if (vin === lastDecoded) return;
+
+    if (vinAborter) vinAborter.abort();
+    vinAborter = new AbortController();
+
+    try{
+      const url = `https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvaluesextended/${encodeURIComponent(vin)}?format=json`;
+      const res = await fetch(url, { signal: vinAborter.signal });
+      const data = await res.json();
+      const row = (data && data.Results && data.Results[0]) || {};
+
+      const yr   = row.ModelYear || row.Model_Year || '';
+      const make = row.Make || '';
+      const model= row.Model || row.Model_Name || '';
+      const trim = row.Trim || row.Series || '';
+
+      if (yr)   setYear(yearSel, yr);
+      if (make) setSelectValueCaseInsensitive(makeSel, make);
+
+      await loadModelsFor(makeSel.value, yearSel.value);
+
+      if (model) setSelectValueCaseInsensitive(modelSel, model);
+      if (trimInput && trim && !trimInput.value) trimInput.value = trim;
+
+      lastDecoded = vin;
+    } catch {
+      // swallow; keep form usable
+    } finally { vinAborter = null; }
+  }
+
+  // wire events
+  if (decodeBtn) decodeBtn.addEventListener('click', (e)=>{ e.preventDefault(); decodeVinNow(vinInput.value); });
+  vinInput.addEventListener('input', debounce(()=> decodeVinNow(vinInput.value), 600));
+
+  // normalize VIN input: uppercase & strip I/O/Q/spaces
+  vinInput.addEventListener('input', (e)=>{
+    e.target.value = String(e.target.value||'').toUpperCase().replace(/[IOQ\s]/g,'');
+  });
+
+  // if prefilling, try once on load
+  if (validVin(vinInput.value)) decodeVinNow(vinInput.value);
 })();
