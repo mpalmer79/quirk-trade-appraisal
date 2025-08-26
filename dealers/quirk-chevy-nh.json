@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-chevy-nh",
+  "displayName": "Quirk Chevrolet NH",
+  "leadTo": "steve.obrien@quirkcars.com, nway@quirkcars.com, gmcintosh@quirkcars.com ",
+  "providerName": "Quirk Chevrolet NH Trade Appraisal",
+  "vendorName": "Quirk Chevrolet NH",
+  "branding": {
+    "logo": "/assets/quirk-chevy-logo.svg",
+    "primary": "#003DA5"
+  }
+}
