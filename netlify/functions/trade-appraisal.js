@@ -4,20 +4,24 @@ import Busboy from "busboy";
 
 sg.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-/** ---------- helpers ---------- **/
+/* ----------------- helpers ----------------- */
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type",
 };
 
-const safe = (v) => (typeof v === "string" ? v.trim() : "");
+const safe   = (v) => (typeof v === "string" ? v.trim() : "");
 const digits = (v) => safe(v).replace(/\D/g, "");
-const htmlEscape = (s) =>
+const escape = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Parse multipart/form-data into { fields, files[] } */
 async function parseMultipart(event) {
-  const contentType = event.headers["content-type"] || event.headers["Content-Type"] || "";
+  const contentType =
+    event.headers["content-type"] ||
+    event.headers["Content-Type"] ||
+    "";
+
   const busboy = Busboy({ headers: { "content-type": contentType } });
 
   const fields = {};
@@ -48,9 +52,29 @@ async function parseMultipart(event) {
   });
 }
 
-/** Build your nice HTML table + text body from a flat object */
+/** Normalize to your schema */
+function normalizeLead(src) {
+  return {
+    name:  safe(src.name),
+    email: safe(src.email),
+    phone: digits(src.phoneRaw || src.phone).slice(0, 15),
+    vin:   safe((src.vin || "").toUpperCase()),
+    year:  safe(src.year),
+    make:  safe(src.make),
+    model: safe(src.model),
+    trim:  safe(src.trim),
+    mileage: safe(src.mileage),
+    extColor: safe(src.extColor),
+    intColor: safe(src.intColor),
+    referrer: safe(src.referrer),
+    landingPage: safe(src.landingPage),
+    submittedAt: new Date().toISOString(),
+  };
+}
+
+/** Build HTML + text tables (includes all provided fields) */
 function buildEmailBodies(lead, rawData) {
-  const preferredOrder = [
+  const preferred = [
     "name","email","phone","vin","year","make","model","trim","mileage",
     "extColor","intColor","title","keys","owners","accident","accidentRepair",
     "warnings","mech","cosmetic","interior","mods","smells","service",
@@ -58,11 +82,11 @@ function buildEmailBodies(lead, rawData) {
     "referrer","landingPage","submittedAt"
   ];
 
-  const merged = { ...rawData, ...lead }; // keep normalized over raw
+  const merged = { ...rawData, ...lead }; // preserve normalized
   const included = new Set();
   const rows = [];
 
-  preferredOrder.forEach((k) => {
+  preferred.forEach((k) => {
     const v = merged[k];
     if (v !== undefined && v !== null && String(v).trim() !== "") {
       rows.push([k, String(v)]);
@@ -80,47 +104,26 @@ function buildEmailBodies(lead, rawData) {
       }
     });
 
-  const htmlTable = `
+  const html = `
     <h2 style="margin:0 0 12px;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;">New Trade-In Lead</h2>
     <p style="margin:0 0 16px;color:#374151;">
-      ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}${lead.trim ? ` – ${htmlEscape(lead.trim)}` : ""}
+      ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}${lead.trim ? ` – ${escape(lead.trim)}` : ""}
     </p>
     <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;font-size:14px;">
       ${rows.map(([k,v]) => `
         <tr>
-          <th align="left" style="text-transform:capitalize;vertical-align:top;color:#111827;padding:6px 10px 6px 0;">${htmlEscape(k)}</th>
-          <td style="vertical-align:top;color:#111827;padding:6px 0;">${htmlEscape(v)}</td>
+          <th align="left" style="text-transform:capitalize;vertical-align:top;color:#111827;padding:6px 10px 6px 0;">${escape(k)}</th>
+          <td style="vertical-align:top;color:#111827;padding:6px 0;">${escape(v)}</td>
         </tr>
       `).join("")}
     </table>
-    <p style="margin-top:16px;color:#6B7280;font-size:12px;">Submitted at ${htmlEscape(lead.submittedAt)}</p>
+    <p style="margin-top:16px;color:#6B7280;font-size:12px;">Submitted at ${escape(lead.submittedAt)}</p>
   `;
-
-  const textLines = rows.map(([k, v]) => `${k}: ${v}`).join("\n");
-  return { htmlTable, textLines };
+  const text = rows.map(([k,v]) => `${k}: ${v}`).join("\n");
+  return { html, text };
 }
 
-/** Normalize fields to your schema */
-function normalizeLead(src) {
-  return {
-    name: safe(src.name),
-    email: safe(src.email),
-    phone: digits(src.phoneRaw || src.phone).slice(0, 15),
-    vin: safe((src.vin || "").toUpperCase()),
-    year: safe(src.year),
-    make: safe(src.make),
-    model: safe(src.model),
-    trim: safe(src.trim),
-    mileage: safe(src.mileage),
-    extColor: safe(src.extColor),
-    intColor: safe(src.intColor),
-    referrer: safe(src.referrer),
-    landingPage: safe(src.landingPage),
-    submittedAt: new Date().toISOString(),
-  };
-}
-
-/** Convert files -> SendGrid attachments (cap to 8) */
+/** Convert parsed files to SendGrid attachments (cap 8) */
 function toAttachments(files) {
   return files.slice(0, 8).map((f) => ({
     content: f.buffer.toString("base64"),
@@ -130,11 +133,15 @@ function toAttachments(files) {
   }));
 }
 
-/** ---------- handler ---------- **/
+/* ----------------- handler ----------------- */
 export async function handler(event) {
-  // CORS / method guard
-  if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers, body: "ok" };
-  if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: "Method Not Allowed" };
+  // CORS / method guards
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "ok" };
+  }
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, headers, body: "Method Not Allowed" };
+  }
 
   const ct = event.headers["content-type"] || event.headers["Content-Type"] || "";
   const isMultipart = ct.startsWith("multipart/form-data");
@@ -142,75 +149,51 @@ export async function handler(event) {
   let rawData = {};
   let uploads = [];
 
+  // Parse body
   try {
     if (isMultipart) {
-      // Parse multipart form-data (photos included)
       const { fields, files } = await parseMultipart(event);
       rawData = fields;
       uploads = files;
     } else {
-      // Fallback: JSON body (keeps your current behavior for JSON posts)
       rawData = JSON.parse(event.body || "{}");
     }
   } catch {
     return { statusCode: 400, headers, body: "Invalid request body" };
   }
 
-  // Honeypot (silent success)
+  // Honeypot — silent success
   if ((safe(rawData.company) || "").trim()) {
-      // --- Success response ---
-  const wantsJson =
-    (event.headers['accept'] || '').includes('application/json') ||
-    (event.headers['x-requested-with'] || '').toLowerCase() === 'xmlhttprequest';
-
-  if (wantsJson) {
-    // If it was an AJAX/Fetch/JSON request
-    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, files: uploads.length }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, silent: true }) };
   }
 
-  // Otherwise redirect browser form submissions to your success page
-  return {
-    statusCode: 303,
-    headers: {
-      ...headers,
-      Location: "/success/index.html",
-    },
-    body: "",
-  };
-}
-
-
-  // Normalize + required fields
+  // Normalize + required
   const lead = normalizeLead(rawData);
   if (!lead.name || !lead.email || !lead.phone || !lead.vin) {
     return { statusCode: 400, headers, body: "Missing required fields" };
   }
 
-  // Build email bodies
-  const { htmlTable, textLines } = buildEmailBodies(lead, rawData);
-
-  // Prepare attachments if any files were uploaded
+  // Build email
+  const { html, text } = buildEmailBodies(lead, rawData);
   const attachments = uploads.length ? toAttachments(uploads) : undefined;
-
-  // Subject (keep your style)
   const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")} — (photos: ${uploads.length})`.trim();
 
-  // Send via SendGrid (to Steve)
+  // Send email
   try {
     await sg.send({
-      to: "steve@quirkcars.com",
-      from: process.env.FROM_EMAIL, // must be verified in SendGrid
+      to: "steve@quirkcars.com",            // change to your test email while testing
+      from: process.env.FROM_EMAIL,         // verified sender in SendGrid
       subject: subjectLine,
-      text: textLines,
-      html: htmlTable,
-      attachments, // <— photos ride along if present
-      // replyTo: "sales@quirkcars.com", // optional
+      text,
+      html,
+      attachments,                          // photos ride along if present
+      // replyTo: "sales@quirkcars.com",
     });
   } catch (e) {
     return { statusCode: 502, headers, body: "Failed to send lead" };
   }
 
-  // Optional Google Sheets backup (unchanged in spirit)
+  // Optional: Sheets backup
   try {
     if (process.env.SHEETS_WEBHOOK_URL) {
       const u = process.env.SHEETS_SHARED_SECRET
@@ -227,5 +210,17 @@ export async function handler(event) {
     // ignore backup errors
   }
 
-  return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+  // --- Success response ---
+  const wantsJson =
+    (event.headers["accept"] || "").includes("application/json") ||
+    (event.headers["x-requested-with"] || "").toLowerCase() === "xmlhttprequest";
+
+  if (wantsJson) {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, files: uploads.length }) };
+  }
+  return {
+    statusCode: 303,
+    headers: { ...headers, Location: "/success/index.html" },
+    body: "",
+  };
 }
