@@ -1,3 +1,130 @@
+// === Dealer Config Loader v1.0 ===
+// Put this at the TOP of assets/app.js
+
+(function dealerConfigLoader(){
+  // --- 1) Hostname -> slug mapping rules
+  function hostToSlug(host){
+    // Example subdomains you might use:
+    // trade.quirk-chevy-ma.com  -> quirk-chevy-ma
+    // trade.vw.quirk.com/nh     -> quirk-vw-nh  (path fallback handled below)
+    // If you use clean 1:1 domains like quirk-kia-braintree.com, we’ll still parse them.
+
+    const url = new URL(window.location.href);
+
+    // Priority 1: explicit override via query, e.g. ?d=quirk-kia-braintree
+    const override = (url.searchParams.get("d") || "").trim().toLowerCase();
+    if (override) return override;
+
+    // Priority 2: path-based slug, e.g. https://trades.quirk.com/quirk-kia-braintree/...
+    const pathParts = url.pathname.split("/").filter(Boolean);
+    if (pathParts.length && /^quirk-/.test(pathParts[0])) {
+      return pathParts[0].toLowerCase();
+    }
+
+    // Priority 3: derive from hostname pieces
+    // Try to find a "quirk-<brand>-<loc>" looking piece in the host
+    const hostParts = host.toLowerCase().split(".");
+    // Common patterns: ["trade","quirk-chevy-ma","com"] OR ["trade","quirk","chevy","ma","com"]
+    // Try longest-to-shortest combos
+    for (let win = Math.min(4, hostParts.length); win >= 2; win--) {
+      for (let i = 0; i + win <= hostParts.length; i++) {
+        const segs = hostParts.slice(i, i + win);
+        const candidate = segs.join("-");
+        if (candidate.startsWith("quirk-")) {
+          return candidate.replace(/--+/g, "-");
+        }
+      }
+    }
+
+    // Last resort: a sensible default (set to a generic or your highest volume rooftop)
+    return "quirk-hyundai-ma";
+  }
+
+  // --- 2) Fetch the JSON config
+  async function fetchDealerConfig(slug){
+    try{
+      const res = await fetch(`/dealers/${slug}.json`, { cache: "no-store" });
+      if(!res.ok) throw new Error("cfg not found");
+      return await res.json();
+    }catch(err){
+      console.warn(`[DealerConfig] Failed for slug=${slug}. Falling back to default.`, err);
+      if (slug !== "quirk-hyundai-ma") {
+        return fetchDealerConfig("quirk-hyundai-ma");
+      }
+      return null;
+    }
+  }
+
+  // --- 3) Apply branding (title, logo, primary color, labels)
+  function applyBranding(cfg){
+    if(!cfg) return;
+
+    // Page title
+    try { document.title = (cfg.displayName || "Quirk Auto") + " | Trade Appraisal"; } catch {}
+
+    // Logo (expects <img id="dealer-logo"> in your HTML; if missing, skip)
+    const logoEl = document.getElementById("dealer-logo");
+    if (logoEl && cfg.branding && cfg.branding.logo) {
+      logoEl.src = cfg.branding.logo;
+      logoEl.alt = (cfg.displayName || "Quirk Auto") + " logo";
+    }
+
+    // Dealer name spot (optional)
+    const nameEl = document.getElementById("dealer-name");
+    if (nameEl && cfg.displayName) nameEl.textContent = cfg.displayName;
+
+    // Primary color -> CSS variable (optional if you want theme tinting)
+    if (cfg.branding && cfg.branding.primary) {
+      document.documentElement.style.setProperty("--quirk-green", cfg.branding.primary);
+      document.documentElement.style.setProperty("--quirk-green-dark", cfg.branding.primary);
+    }
+  }
+
+  // --- 4) Ensure hidden inputs so the server gets dealer metadata
+  function ensureHiddenInputs(cfg){
+    if(!cfg) return;
+    const form = document.getElementById("tradeForm");
+    if(!form) return; // form not in DOM yet; will be re-run after DOMContentLoaded
+
+    const KV = {
+      dealerSlug: cfg.slug,
+      dealerDisplay: cfg.displayName || "",
+      vendorName: cfg.vendorName || "",
+      providerName: cfg.providerName || "",
+      leadTo: cfg.leadTo || ""  // the Netlify function can ignore this if you prefer server-side routing only
+    };
+
+    Object.entries(KV).forEach(([name, val])=>{
+      let el = form.querySelector(`input[name="${name}"]`);
+      if(!el){
+        el = document.createElement("input");
+        el.type = "hidden";
+        el.name = name;
+        form.appendChild(el);
+      }
+      el.value = val;
+    });
+  }
+
+  // --- 5) Boot
+  async function boot(){
+    const slug = hostToSlug(window.location.hostname);
+    const cfg = await fetchDealerConfig(slug);
+    window.DEALER_CFG = cfg; // available to other scripts if needed
+    applyBranding(cfg);
+
+    // If the form isn't rendered yet, wait for DOMContentLoaded to inject hidden inputs.
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", ()=> ensureHiddenInputs(cfg), { once:true });
+    } else {
+      ensureHiddenInputs(cfg);
+    }
+  }
+
+  boot();
+})();
+
+
 /* assets/app.js
     Quirk Sight-Unseen Trade Tool — VIN decode + Netlify Forms submit
     - Robust VIN decode (NHTSA VPIC) prefills Year/Make/Model/Trim
