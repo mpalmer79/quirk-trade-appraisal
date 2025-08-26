@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-kia-marshfield",
+  "displayName": "Quirk Kia Marshfield",
+  "leadTo": "kiamarshfield-trades@quirkcars.com",
+  "providerName": "Quirk Kia Marshfield Trade Appraisal",
+  "vendorName": "Quirk Kia Marshfield",
+  "branding": {
+    "logo": "/assets/quirk-kia-logo.svg",
+    "primary": "#C8102E"
+  }
+}
