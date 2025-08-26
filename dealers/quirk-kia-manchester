@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-kia-manchester",
+  "displayName": "Quirk Kia Manchester",
+  "leadTo": "kiamanchester-trades@quirkcars.com",
+  "providerName": "Quirk Kia Manchester Trade Appraisal",
+  "vendorName": "Quirk Kia Manchester",
+  "branding": {
+    "logo": "/assets/quirk-kia-logo.svg",
+    "primary": "#C8102E"
+  }
+}
