@@ -158,8 +158,27 @@ export async function handler(event) {
 
   // Honeypot (silent success)
   if ((safe(rawData.company) || "").trim()) {
-    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, silent: true }) };
+      // --- Success response ---
+  const wantsJson =
+    (event.headers['accept'] || '').includes('application/json') ||
+    (event.headers['x-requested-with'] || '').toLowerCase() === 'xmlhttprequest';
+
+  if (wantsJson) {
+    // If it was an AJAX/Fetch/JSON request
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, files: uploads.length }) };
   }
+
+  // Otherwise redirect browser form submissions to your success page
+  return {
+    statusCode: 303,
+    headers: {
+      ...headers,
+      Location: "/success/index.html",
+    },
+    body: "",
+  };
+}
+
 
   // Normalize + required fields
   const lead = normalizeLead(rawData);
