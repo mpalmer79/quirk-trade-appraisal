@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-nissan",
+  "displayName": "Quirk Nissan",
+  "leadTo": "nissan-trades@quirkcars.com",
+  "providerName": "Quirk Nissan Trade Appraisal",
+  "vendorName": "Quirk Nissan",
+  "branding": {
+    "logo": "/assets/quirk-nissan-logo.svg",
+    "primary": "#C3002F"
+  }
+}
