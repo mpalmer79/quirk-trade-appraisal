@@ -15,21 +15,14 @@
     1. The 'netlify' attribute tells Netlify to process the form.
     2. The 'action="/success/index.html"' attribute now points directly to the success file.
   -->
-  <form
-  id="tradeForm"
+  <form id="tradeForm"
+        action="/.netlify/functions/trade-appraisal"
+        method="post"
+        enctype="multipart/form-data">
+        netlify-honeypot="company"
   
-  method="post"
-  action="/.netlify/functions/trade-appraisal"
+  
 
-  netlify-honeypot="company"
-  enctype="multipart/form-data">
-
-    <!-- Force Netlify email subject -->
-<input type="hidden" name="subject" 
-  value="Quirk Trade Tool lead">
-
-  <!-- This hidden field is required for Netlify to correctly identify the form -->
-  <input type="hidden" name="form-name" value="trade-appraisal">
 
   <!-- This is the honeypot field to catch bots -->
   <input type="text" name="company" tabindex="-1" autocomplete="off"
