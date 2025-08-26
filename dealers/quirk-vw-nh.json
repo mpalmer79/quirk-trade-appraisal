@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-vw-nh",
+  "displayName": "Quirk Volkswagen NH",
+  "leadTo": "vwnh-trades@quirkcars.com",
+  "providerName": "Quirk Volkswagen NH Trade Appraisal",
+  "vendorName": "Quirk Volkswagen NH",
+  "branding": {
+    "logo": "/assets/quirk-vw-logo.svg",
+    "primary": "#001E50"
+  }
+}
