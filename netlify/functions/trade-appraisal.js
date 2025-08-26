@@ -178,20 +178,27 @@ export async function handler(event) {
   const attachments = uploads.length ? toAttachments(uploads) : undefined;
   const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")} — (photos: ${uploads.length})`.trim();
 
-  // Send email
-  try {
-    await sg.send({
-      to: "mpalmer@quirkcars.com",            // change to your test email while testing
-      from: process.env.FROM_EMAIL,         // verified sender in SendGrid
-      subject: subjectLine,
-      text,
-      html,
-      attachments,                          // photos ride along if present
-      // replyTo: "sales@quirkcars.com",
-    });
-  } catch (e) {
-    return { statusCode: 502, headers, body: "Failed to send lead" };
-  }
+// Send email
+try {
+  // allow comma-separated list in TO_EMAIL
+  const recipients = (process.env.TO_EMAIL || "mpalmer@quirkcars.com")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  await sg.send({
+    to: recipients,                    // ✅ now uses TO_EMAIL from Netlify
+    from: process.env.FROM_EMAIL,      // must be a verified sender in SendGrid
+    subject: subjectLine,
+    text,
+    html,
+    attachments,                       // photos ride along if present
+    // replyTo: "sales@quirkcars.com",
+  });
+} catch (e) {
+  return { statusCode: 502, headers, body: "Failed to send lead" };
+}
+
 
   // Optional: Sheets backup
   try {
