@@ -174,7 +174,7 @@ export async function handler(event) {
   const attachments = uploads.length ? toAttachments(uploads) : undefined;
 
   // Subject (keep your style)
-  const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")}`.trim();
+  const subjectLine = `New Trade-In Lead — ${lead.name} — ${[lead.year, lead.make, lead.model].filter(Boolean).join(" ")} — (photos: ${uploads.length})`.trim();
 
   // Send via SendGrid (to Steve)
   try {
