@@ -1,0 +1,11 @@
+{
+  "slug": "quirk-hyundai",
+  "displayName": "Quirk Hyundai",
+  "leadTo": "hyundai-trades@quirkcars.com",
+  "providerName": "Quirk Hyundai Trade Appraisal",
+  "vendorName": "Quirk Hyundai",
+  "branding": {
+    "logo": "/assets/quirk-hyundai-logo.svg",
+    "primary": "#002D73"
+  }
+}
