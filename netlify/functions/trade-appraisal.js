@@ -181,7 +181,7 @@ export async function handler(event) {
   // Send email
   try {
     await sg.send({
-      to: "steve@quirkcars.com",            // change to your test email while testing
+      to: "mpalmer@quirkcars.com",            // change to your test email while testing
       from: process.env.FROM_EMAIL,         // verified sender in SendGrid
       subject: subjectLine,
       text,
