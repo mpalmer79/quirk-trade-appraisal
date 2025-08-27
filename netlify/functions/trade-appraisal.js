@@ -182,7 +182,7 @@ export async function handler(event) {
 // Send email
 try {
   // allow comma-separated list in TO_EMAIL
-  const recipients = (process.env.TO_EMAIL || "mpalmer@quirkcars.com")
+  const recipients = (process.env.TO_EMAIL || "mpalmer@quirkcars.com, steve.obrien@quirkcars.com, jlombard@quirkcars.com, msalihovic@quirkcars.com, nway@quirkcars.com, gmcintosh@quirkcars.com, lmendez@quirkcars.com")
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
